@@ -1,5 +1,3 @@
-use exitfailure::ExitFailure;
-use failure::Error;
 use i3ipc::{
     event::{inner::WindowChange, Event},
     reply::Command,
@@ -9,22 +7,24 @@ use signal_hook::{iterator::Signals, SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 use std::{process::exit, thread};
 use structopt::StructOpt;
 
+type Result<T> = std::result::Result<T, failure::Error>;
+
 #[derive(StructOpt)]
 struct Cli {
     #[structopt(short = "o", long = "opacity", default_value = "0.78")]
     opacity: f64,
 }
 
-fn update_opacity(ipc: &mut I3Connection, opacity: f64) -> Result<Command, Error> {
+fn update_opacity(ipc: &mut I3Connection, opacity: f64) -> Result<Command> {
     let cmd = format!("[tiling] opacity {}; opacity 1", opacity);
     Ok(ipc.run_command(&cmd)?)
 }
 
-fn reset_opacity(ipc: &mut I3Connection) -> Result<Command, Error> {
+fn reset_opacity(ipc: &mut I3Connection) -> Result<Command> {
     Ok(ipc.run_command("[tiling] opacity 1")?)
 }
 
-fn handle_signals() -> Result<(), Error> {
+fn handle_signals() -> Result<()> {
     let mut conn = I3Connection::connect()?;
     let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
     signals.forever().next();
@@ -32,7 +32,7 @@ fn handle_signals() -> Result<(), Error> {
     exit(0)
 }
 
-fn main() -> Result<(), ExitFailure> {
+fn main() -> Result<()> {
     let args = Cli::from_args();
     thread::spawn(handle_signals);
     let mut conn = I3Connection::connect()?;
