@@ -7,7 +7,8 @@ use signal_hook::{iterator::Signals, SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 use std::{process::exit, thread};
 use structopt::StructOpt;
 
-type Result<T> = std::result::Result<T, failure::Error>;
+type PerswayError = Box<dyn std::error::Error + Send + Sync>;
+type Result<T> = std::result::Result<T, PerswayError>;
 
 #[derive(StructOpt)]
 struct Cli {
