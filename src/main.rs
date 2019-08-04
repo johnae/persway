@@ -1,3 +1,4 @@
+use derive_more::{Display, From};
 use i3ipc::{
     event::{inner::WindowChange, Event},
     reply::Command,
@@ -7,7 +8,15 @@ use signal_hook::{iterator::Signals, SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 use std::{process::exit, thread};
 use structopt::StructOpt;
 
-type PerswayError = Box<dyn std::error::Error + Send + Sync>;
+#[derive(Debug, Display, From)]
+enum PerswayError {
+    I3MsgError(i3ipc::MessageError),
+    I3ConnError(i3ipc::EstablishError),
+    IOError(std::io::Error),
+}
+
+impl std::error::Error for PerswayError {}
+
 type Result<T> = std::result::Result<T, PerswayError>;
 
 #[derive(StructOpt)]
