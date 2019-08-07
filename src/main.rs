@@ -10,9 +10,9 @@ use structopt::StructOpt;
 
 #[derive(Debug, Display, From)]
 enum PerswayError {
-    I3MsgError(i3ipc::MessageError),
-    I3ConnError(i3ipc::EstablishError),
-    IOError(std::io::Error),
+    I3Msg(i3ipc::MessageError),
+    I3Establish(i3ipc::EstablishError),
+    Io(std::io::Error),
 }
 
 impl std::error::Error for PerswayError {}
