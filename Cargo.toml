@@ -1,11 +1,10 @@
 [package]
 name = "persway"
-version = "0.1.0"
+version = "0.3.0"
 authors = ["John Axel Eriksson <john@insane.se>"]
 edition = "2018"
 
 [dependencies]
-structopt = "0.2.10"
-i3ipc = "0.10.1"
-signal-hook = "0.1.8"
-derive_more = "0.13.0"
+structopt = "0.3"
+swayipc = { version = "2.4", features = ["async", "event_stream"] }
+signal-hook = "0.1"
