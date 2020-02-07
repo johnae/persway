@@ -23,10 +23,11 @@ fn handle_signals() {
     exit(0)
 }
 
-async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace, swayipc::Error> {
+async fn get_focused_workspace(conn: &mut Connection) -> Fallible<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
-    let focused = ws.find(|w| w.focused).unwrap();
-    Ok(focused)
+    Ok(ws
+        .find(|w| w.focused)
+        .expect("no focused workspace, shouldn't happen"))
 }
 
 #[async_std::main]
