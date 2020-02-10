@@ -54,7 +54,11 @@ async fn main() -> Fallible<()> {
                             .unwrap()
                     });
                     let current_ws = get_focused_workspace(&mut commands).await?;
-                    let num = current_ws.name.split(": ").next().unwrap();
+                    let num = current_ws
+                        .name
+                        .split(": ")
+                        .next()
+                        .unwrap_or(&current_ws.name);
                     let newname = format!("{}: {}", num, app_name.to_lowercase());
                     let cmd = format!("rename workspace to {}", newname);
                     commands.run_command(&cmd).await?;
