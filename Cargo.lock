@@ -391,6 +391,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "persway"
 version = "0.3.4"
 dependencies = [
+ "failure 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "signal-hook 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "swayipc 2.4.1 (registry+https://github.com/rust-lang/crates.io-index)",

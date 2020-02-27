@@ -1,3 +1,4 @@
+use failure::err_msg;
 use signal_hook::{iterator::Signals, SIGHUP, SIGINT, SIGQUIT, SIGTERM};
 use std::{process::exit, thread};
 use structopt::StructOpt;
@@ -27,28 +28,23 @@ fn handle_signals() {
 
 async fn autolayout(conn: &mut Connection) -> Fallible<()> {
     let tree = conn.get_tree().await?;
-    let focused = if let Some(focused) = tree.find_focused_as_ref(|n| n.focused) {
-        focused
-    } else {
-        return Ok(());
-    };
-    let parent =
-        if let Some(parent) = tree.find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused)) {
-            parent
-        } else {
-            return Ok(());
-        };
+    let focused = tree
+        .find_focused_as_ref(|n| n.focused)
+        .ok_or(err_msg("No focused node"))?;
+    let parent = tree
+        .find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused))
+        .ok_or(err_msg("No parent"))?;
     let is_floating = focused.node_type == NodeType::FloatingCon;
     let is_full_screen = focused.percent.unwrap_or(1.0) > 1.0;
     let is_stacked = parent.layout == NodeLayout::Stacked;
     let is_tabbed = parent.layout == NodeLayout::Tabbed;
-    let change_split = !is_floating && !is_full_screen && !is_stacked && !is_tabbed;
-    if change_split {
-        if focused.rect.height > focused.rect.width {
-            conn.run_command("split v").await?;
+    if !is_floating && !is_full_screen && !is_stacked && !is_tabbed {
+        let cmd = if focused.rect.height > focused.rect.width {
+            "split v"
         } else {
-            conn.run_command("split h").await?;
-        }
+            "split h"
+        };
+        conn.run_command(cmd).await?;
     };
 
     Ok(())
@@ -82,8 +78,7 @@ async fn main() -> Fallible<()> {
                     let app_name = app_id.unwrap_or_else(|| {
                         window_properties
                             .map(|props| props.class)
-                            .or(Some("Unknown".to_string()))
-                            .unwrap()
+                            .unwrap_or("Unknown".to_string())
                     });
                     let current_ws = get_focused_workspace(&mut commands).await?;
                     let num = current_ws
@@ -95,7 +90,9 @@ async fn main() -> Fallible<()> {
                     let cmd = format!("rename workspace to {}", newname);
                     commands.run_command(&cmd).await?;
                     if args.autolayout {
-                        autolayout(&mut commands).await?;
+                        if let Err(e) = autolayout(&mut commands).await {
+                            println!("err: {}", e);
+                        };
                     };
                 }
                 _ => {}

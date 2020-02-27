@@ -14,3 +14,4 @@ keywords = ["sway", "swaywm", "swayipc", "ipc", "async"]
 structopt = "0.3"
 swayipc = { version = "2.4", features = ["async", "event_stream"] }
 signal-hook = "0.1"
+failure = "0.1"
