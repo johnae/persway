@@ -8,7 +8,7 @@ repository = "https://github.com/johnae/persway"
 readme = "README.md"
 license = "MIT"
 categories = ["asynchronous", "concurrency", "network-programming"]
-keywords = ["cli", "sway", "swaywm", "swayipc","ipc", "async"]
+keywords = ["sway", "swaywm", "swayipc", "ipc", "async"]
 
 [dependencies]
 structopt = "0.3"
