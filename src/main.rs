@@ -27,18 +27,21 @@ fn handle_signals() {
 
 async fn autolayout(conn: &mut Connection) -> Fallible<()> {
     let tree = conn.get_tree().await?;
-    let focused = tree
-        .find_focused_as_ref(|n| n.focused)
-        .expect("Expected a node to be focused");
-    let parent = tree.find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused));
+    let focused = if let Some(focused) = tree.find_focused_as_ref(|n| n.focused) {
+        focused
+    } else {
+        return Ok(());
+    };
+    let parent =
+        if let Some(parent) = tree.find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused)) {
+            parent
+        } else {
+            return Ok(());
+        };
     let is_floating = focused.node_type == NodeType::FloatingCon;
     let is_full_screen = focused.percent.unwrap_or(1.0) > 1.0;
-    let mut is_stacked = false;
-    let mut is_tabbed = false;
-    if let Some(parent) = parent {
-        is_stacked = parent.layout == NodeLayout::Stacked;
-        is_tabbed = parent.layout == NodeLayout::Tabbed;
-    }
+    let is_stacked = parent.layout == NodeLayout::Stacked;
+    let is_tabbed = parent.layout == NodeLayout::Tabbed;
     let change_split = !is_floating && !is_full_screen && !is_stacked && !is_tabbed;
     if change_split {
         if focused.rect.height > focused.rect.width {
