@@ -5,15 +5,26 @@ use structopt::StructOpt;
 use swayipc::async_std;
 use swayipc::async_std::stream::StreamExt;
 use swayipc::reply::Event;
-use swayipc::reply::{NodeLayout, NodeType, WindowChange, Workspace};
+use swayipc::reply::{NodeLayout, NodeType, WindowChange, WindowEvent, Workspace};
 use swayipc::{Connection, EventType, Fallible};
 
 #[derive(StructOpt)]
+/// I am Persway. A friendly daemon.
+///
+/// I talk to the Sway Compositor and persuade it to do little evil things.
+/// Give me an option and see what it brings.
 struct Cli {
+    /// Set the level of opacity to give non-focused containers
     #[structopt(short = "o", long = "opacity", default_value = "0.78")]
     opacity: f64,
+    /// Enable autolayout, alternating between horizontal and vertical
+    /// somewhat reminiscent of the Awesome WM.
     #[structopt(short = "a", long = "autolayout")]
     autolayout: bool,
+    /// Enable automatic workspace renaming based on what is running
+    /// in the workspace (eg. application name).
+    #[structopt(short = "w", long = "workspace-renaming")]
+    workspace_renaming: bool,
 }
 
 fn handle_signals() {
@@ -57,6 +68,29 @@ async fn get_focused_workspace(conn: &mut Connection) -> Fallible<Workspace> {
         .expect("no focused workspace, shouldn't happen"))
 }
 
+async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Fallible<()> {
+    let current_ws = get_focused_workspace(conn).await?;
+    let ws_num = current_ws
+        .name
+        .split(": ")
+        .next()
+        .unwrap_or(&current_ws.name);
+
+    let app_id = event.container.app_id.as_ref();
+    let window_properties = event.container.window_properties.as_ref();
+    let app_name = app_id.map_or_else(
+        || window_properties.and_then(|p| Some(&p.class)),
+        |name| Some(name),
+    );
+
+    if let Some(app_name) = app_name {
+        let newname = format!("{}: {}", ws_num, app_name.to_lowercase());
+        let cmd = format!("rename workspace to {}", newname);
+        conn.run_command(&cmd).await?;
+    }
+    Ok(())
+}
+
 #[async_std::main]
 async fn main() -> Fallible<()> {
     let args = Cli::from_args();
@@ -73,27 +107,17 @@ async fn main() -> Fallible<()> {
                     let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
                     commands.run_command(&cmd).await?;
 
-                    let app_id = wevent.container.app_id;
-                    let window_properties = wevent.container.window_properties;
-                    let app_name = app_id.unwrap_or_else(|| {
-                        window_properties
-                            .map(|props| props.class)
-                            .unwrap_or("Unknown".to_string())
-                    });
-                    let current_ws = get_focused_workspace(&mut commands).await?;
-                    let num = current_ws
-                        .name
-                        .split(": ")
-                        .next()
-                        .unwrap_or(&current_ws.name);
-                    let newname = format!("{}: {}", num, app_name.to_lowercase());
-                    let cmd = format!("rename workspace to {}", newname);
-                    commands.run_command(&cmd).await?;
+                    if args.workspace_renaming {
+                        if let Err(e) = rename_workspace(&wevent, &mut commands).await {
+                            println!("workspace rename err: {}", e);
+                        }
+                    }
+
                     if args.autolayout {
                         if let Err(e) = autolayout(&mut commands).await {
-                            println!("err: {}", e);
+                            println!("autolayout err: {}", e);
                         };
-                    };
+                    }
                 }
                 _ => {}
             },
