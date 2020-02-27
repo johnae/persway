@@ -389,7 +389,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "persway"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "signal-hook 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
