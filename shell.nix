@@ -1,12 +1,5 @@
 let
-  mozilla = import (builtins.fetchGit {
-    url = "https://github.com/mozilla/nixpkgs-mozilla.git";
-    ref = "master";
-    rev = "36455d54de0b40d9432bba6d8207a5582210b3eb";
-  });
-
-  pkgs = import <nixpkgs> ({ overlays = [ mozilla ]; });
-
+  pkgs = import ./nix { };
   rustChannel = pkgs.latest.rustChannels.stable;
 
   rust = rustChannel.rust.override {
@@ -15,8 +8,8 @@ let
 
   cargo = rustChannel.cargo;
 
-in with pkgs;
+in
 mkShell {
-  buildInputs = [ rust cargo ];
+  buildInputs = with pkgs; [ niv rust cargo ];
   RUST_SRC_PATH = "${rustChannel.rust-src}/lib/rustlib/src/rust/src";
 }
