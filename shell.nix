@@ -9,7 +9,7 @@ let
   cargo = rustChannel.cargo;
 
 in
-mkShell {
+pkgs.mkShell {
   buildInputs = with pkgs; [ niv rust cargo ];
   RUST_SRC_PATH = "${rustChannel.rust-src}/lib/rustlib/src/rust/src";
 }
