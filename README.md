@@ -33,4 +33,6 @@ OPTIONS:
             Set the level of opacity to give non-focused containers [default: 0.78]
 ```
 
+If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784
+
 Persway is released under the MIT license.
