@@ -35,4 +35,9 @@ OPTIONS:
 
 If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784 - the gist of it is that it is likely a sway config issue.
 
+
+### Nix flake
+
+If you happen to be on [NixOS](https://nixos.org) or you're using the Nix Package Manager, you can easily use the flake and overlay from this repo (provided you're using Nix flakes ofc).
+
 Persway is released under the MIT license.
