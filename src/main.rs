@@ -53,7 +53,6 @@ async fn main() -> Result<()> {
     let subs = [EventType::Window];
     let mut events = Connection::new().await?.subscribe(&subs).await?;
     while let Some(event) = events.next().await {
-        println!("event: {:?}\n", event);
         match event? {
             Event::Window(event) => match event.change {
                 WindowChange::Focus => {

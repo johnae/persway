@@ -6,7 +6,7 @@ If `autolayout` is enabled (see command line options below), it will also altern
 Default opacity is `0.78` but can be changed via a command line parameter:
 
 ```
-persway 0.3.5
+persway 0.4.0
 I am Persway. A friendly daemon.
 
 I talk to the Sway Compositor and persuade it to do little evil things. Give me an option and see what it brings.
