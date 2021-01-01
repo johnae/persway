@@ -1,12 +1,12 @@
-use failure::err_msg;
-use signal_hook::{iterator::Signals, SIGHUP, SIGINT, SIGQUIT, SIGTERM};
-use std::{process::exit, thread};
+use anyhow::{anyhow, Result};
+use async_std::prelude::*;
+use signal_hook::consts::signal::*;
+use signal_hook_async_std::Signals;
+use std::process::exit;
 use structopt::StructOpt;
-use swayipc::async_std;
-use swayipc::async_std::stream::StreamExt;
-use swayipc::reply::Event;
-use swayipc::reply::{NodeLayout, NodeType, WindowChange, WindowEvent, Workspace};
-use swayipc::{Connection, EventType, Fallible};
+use swayipc_async::{
+    Connection, Event, EventType, NodeLayout, NodeType, WindowChange, WindowEvent, Workspace,
+};
 
 #[derive(StructOpt)]
 /// I am Persway. A friendly daemon.
@@ -27,24 +27,70 @@ struct Cli {
     workspace_renaming: bool,
 }
 
-fn handle_signals() {
-    let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM]).unwrap();
-    signals.forever().next();
-    async_std::task::block_on(async {
-        let mut commands = Connection::new().await.unwrap();
-        commands.run_command("[tiling] opacity 1").await.unwrap();
-    });
-    exit(0)
+async fn handle_signals(signals: Signals) {
+    let mut signals = signals.fuse();
+    while let Some(signal) = signals.next().await {
+        match signal {
+            SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
+                let mut commands = Connection::new().await.unwrap();
+                commands.run_command("[tiling] opacity 1").await.unwrap();
+                exit(0)
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
-async fn autolayout(conn: &mut Connection) -> Fallible<()> {
+#[async_std::main]
+async fn main() -> Result<()> {
+    let args = Cli::from_args();
+
+    let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
+    let handle = signals.handle();
+    let signals_task = async_std::task::spawn(handle_signals(signals));
+
+    let mut commands = Connection::new().await?;
+    let subs = [EventType::Window];
+    let mut events = Connection::new().await?.subscribe(&subs).await?;
+    while let Some(event) = events.next().await {
+        println!("event: {:?}\n", event);
+        match event? {
+            Event::Window(event) => match event.change {
+                WindowChange::Focus => {
+                    let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
+                    commands.run_command(&cmd).await?;
+
+                    if args.workspace_renaming {
+                        if let Err(e) = rename_workspace(&event, &mut commands).await {
+                            println!("workspace rename err: {}", e);
+                        }
+                    };
+
+                    if args.autolayout {
+                        if let Err(e) = autolayout(&mut commands).await {
+                            println!("autolayout err: {}", e);
+                        };
+                    };
+                }
+                _ => {}
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    handle.close();
+    signals_task.await;
+    Ok(())
+}
+
+async fn autolayout(conn: &mut Connection) -> Result<()> {
     let tree = conn.get_tree().await?;
     let focused = tree
         .find_focused_as_ref(|n| n.focused)
-        .ok_or(err_msg("No focused node"))?;
+        .ok_or(anyhow!("No focused node"))?;
     let parent = tree
         .find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused))
-        .ok_or(err_msg("No parent"))?;
+        .ok_or(anyhow!("No parent"))?;
     let is_floating = focused.node_type == NodeType::FloatingCon;
     let is_full_screen = focused.percent.unwrap_or(1.0) > 1.0;
     let is_stacked = parent.layout == NodeLayout::Stacked;
@@ -61,14 +107,14 @@ async fn autolayout(conn: &mut Connection) -> Fallible<()> {
     Ok(())
 }
 
-async fn get_focused_workspace(conn: &mut Connection) -> Fallible<Workspace> {
+async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
     Ok(ws
         .find(|w| w.focused)
         .expect("no focused workspace, shouldn't happen"))
 }
 
-async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Fallible<()> {
+async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Result<()> {
     let current_ws = get_focused_workspace(conn).await?;
     let ws_num = current_ws
         .name
@@ -78,52 +124,23 @@ async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Fa
 
     let app_id = event.container.app_id.as_ref();
     let window_properties = event.container.window_properties.as_ref();
+    println!("app_id: {:?}", app_id);
     let app_name = app_id.map_or_else(
-        || window_properties.and_then(|p| Some(&p.class)),
+        || window_properties.and_then(|p| p.class.as_ref()),
         |name| Some(name),
     );
 
     if let Some(app_name) = app_name {
-        let newname = format!("{}: {}", ws_num, app_name.to_lowercase());
+        let newname = format!(
+            "{}: {}",
+            ws_num,
+            app_name
+                .trim_start_matches('-')
+                .trim_end_matches('-')
+                .to_lowercase()
+        );
         let cmd = format!("rename workspace to {}", newname);
         conn.run_command(&cmd).await?;
     }
     Ok(())
-}
-
-#[async_std::main]
-async fn main() -> Fallible<()> {
-    let args = Cli::from_args();
-    thread::spawn(handle_signals);
-
-    let subscriptions = [EventType::Window];
-    let mut events = Connection::new().await?.subscribe(&subscriptions).await?;
-    let mut commands = Connection::new().await?;
-
-    while let Some(event) = events.next().await {
-        match event? {
-            Event::Window(wevent) => match wevent.change {
-                WindowChange::Focus => {
-                    let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
-                    commands.run_command(&cmd).await?;
-
-                    if args.workspace_renaming {
-                        if let Err(e) = rename_workspace(&wevent, &mut commands).await {
-                            println!("workspace rename err: {}", e);
-                        }
-                    }
-
-                    if args.autolayout {
-                        if let Err(e) = autolayout(&mut commands).await {
-                            println!("autolayout err: {}", e);
-                        };
-                    }
-                }
-                _ => {}
-            },
-            _ => unreachable!(),
-        }
-    }
-
-    unreachable!();
 }
