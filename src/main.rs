@@ -71,6 +71,13 @@ async fn main() -> Result<()> {
                         };
                     };
                 }
+                WindowChange::Close => {
+                    if args.workspace_renaming {
+                        if let Err(e) = rename_workspace(&event, &mut commands).await {
+                            println!("workspace rename err: {}", e);
+                        }
+                    };
+                }
                 _ => {}
             },
             _ => unreachable!(),
@@ -121,9 +128,14 @@ async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Re
         .next()
         .unwrap_or(&current_ws.name);
 
+    if current_ws.focus.len() == 0 {
+        let cmd = format!("rename workspace to {}", ws_num);
+        conn.run_command(&cmd).await?;
+        return Ok(());
+    }
+
     let app_id = event.container.app_id.as_ref();
     let window_properties = event.container.window_properties.as_ref();
-    println!("app_id: {:?}", app_id);
     let app_name = app_id.map_or_else(
         || window_properties.and_then(|p| p.class.as_ref()),
         |name| Some(name),
@@ -140,6 +152,6 @@ async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Re
         );
         let cmd = format!("rename workspace to {}", newname);
         conn.run_command(&cmd).await?;
-    }
+    };
     Ok(())
 }
