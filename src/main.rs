@@ -121,9 +121,8 @@ async fn autolayout(conn: &mut Connection) -> Result<()> {
 
 async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
-    Ok(ws
-        .find(|w| w.focused)
-        .expect("no focused workspace, shouldn't happen"))
+    ws.find(|w| w.focused)
+        .ok_or(anyhow!("No focused workspace"))
 }
 
 async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Result<()> {
