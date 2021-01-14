@@ -14,8 +14,9 @@ use swayipc_async::{
 /// I talk to the Sway Compositor and persuade it to do little evil things.
 /// Give me an option and see what it brings.
 struct Cli {
-    /// Set the level of opacity to give non-focused containers
-    #[structopt(short = "o", long = "opacity", default_value = "0.78")]
+    /// Set the level of opacity to give non-focused containers, the default
+    /// of 1.0 means persway will not set any opacity at all.
+    #[structopt(short = "o", long = "opacity", default_value = "1.0")]
     opacity: f64,
     /// Enable autolayout, alternating between horizontal and vertical
     /// somewhat reminiscent of the Awesome WM.
@@ -29,11 +30,14 @@ struct Cli {
 
 async fn handle_signals(signals: Signals) {
     let mut signals = signals.fuse();
+    let args = Cli::from_args();
     while let Some(signal) = signals.next().await {
         match signal {
             SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
-                let mut commands = Connection::new().await.unwrap();
-                commands.run_command("[tiling] opacity 1").await.unwrap();
+                if args.opacity < 1.0 {
+                    let mut commands = Connection::new().await.unwrap();
+                    commands.run_command("[tiling] opacity 1").await.unwrap();
+                };
                 exit(0)
             }
             _ => unreachable!(),
@@ -56,8 +60,10 @@ async fn main() -> Result<()> {
         match event? {
             Event::Window(event) => match event.change {
                 WindowChange::Focus => {
-                    let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
-                    commands.run_command(&cmd).await?;
+                    if args.opacity < 1.0 {
+                        let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
+                        commands.run_command(&cmd).await?;
+                    }
 
                     if args.workspace_renaming {
                         if let Err(e) = rename_workspace(&event, &mut commands).await {
