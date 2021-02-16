@@ -32,6 +32,8 @@ OPTIONS:
     -o, --opacity <opacity>
             Set the level of opacity to give non-focused containers, the default of 1.0 means persway will not set any
             opacity at all [default: 1.0]
+    -s, --opacity_skip <opacity-skip>...
+            Do not set opacity of the windows with given criteria. Multiple criteria can be specified
 ```
 
 If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784 - the gist of it is that it is likely a sway config issue.
