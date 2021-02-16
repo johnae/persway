@@ -18,6 +18,10 @@ struct Cli {
     /// of 1.0 means persway will not set any opacity at all.
     #[structopt(short = "o", long = "opacity", default_value = "1.0")]
     opacity: f64,
+    /// Do not set opacity of the windows with given criteria. Multiple
+    /// criteria can be specified.
+    #[structopt(short = "s", long = "opacity_skip")]
+    opacity_skip: Vec<String>,
     /// Enable autolayout, alternating between horizontal and vertical
     /// somewhat reminiscent of the Awesome WM.
     #[structopt(short = "a", long = "autolayout")]
@@ -48,6 +52,12 @@ async fn handle_signals(signals: Signals) {
 #[async_std::main]
 async fn main() -> Result<()> {
     let args = Cli::from_args();
+    let opacity_skip = args
+        .opacity_skip
+        .iter()
+        .map(|c| format!("[{}] opacity 1;", c))
+        .collect::<Vec<_>>()
+        .join(" ");
 
     let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
     let handle = signals.handle();
@@ -61,7 +71,10 @@ async fn main() -> Result<()> {
             Event::Window(event) => match event.change {
                 WindowChange::Focus => {
                     if args.opacity < 1.0 {
-                        let cmd = format!("[tiling] opacity {}; opacity 1", args.opacity);
+                        let cmd = format!(
+                            "[tiling] opacity {}; {} opacity 1",
+                            args.opacity, opacity_skip
+                        );
                         commands.run_command(&cmd).await?;
                     }
 
