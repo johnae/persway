@@ -4,7 +4,7 @@ rustPlatform.buildRustPackage {
   pname = "persway";
   version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
   src = self;
-  cargoSha256 = "sha256-YFTE4iteUBRtcyeCHqDyaxsWN4oESpfGkcljPBMT2tQ=";
+  cargoSha256 = "sha256-c/30fqLOw1WvDRNgH+Su0i0kNzWPZ+qZJ6tHGS+UWjM=";
   doCheck = false;
   meta = {
     license = stdenv.lib.licenses.mit;
