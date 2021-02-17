@@ -14,14 +14,6 @@ use swayipc_async::{
 /// I talk to the Sway Compositor and persuade it to do little evil things.
 /// Give me an option and see what it brings.
 struct Cli {
-    /// Set the level of opacity to give non-focused containers, the default
-    /// of 1.0 means persway will not set any opacity at all.
-    #[structopt(short = "o", long = "opacity", default_value = "1.0")]
-    opacity: f64,
-    /// Do not set opacity of the windows with given criteria. Multiple
-    /// criteria can be specified.
-    #[structopt(short = "s", long = "opacity_skip")]
-    opacity_skip: Vec<String>,
     /// Enable autolayout, alternating between horizontal and vertical
     /// somewhat reminiscent of the Awesome WM.
     #[structopt(short = "a", long = "autolayout")]
@@ -30,18 +22,37 @@ struct Cli {
     /// in the workspace (eg. application name).
     #[structopt(short = "w", long = "workspace-renaming")]
     workspace_renaming: bool,
+    /// Called when window comes into focus. To automatically set the opacity of
+    /// all other windows to 0.8 for example, you would set this to:
+    ///
+    /// [tiling] opacity 0.8; opacity 1
+    ///
+    /// Eg. set all tiling windows to opacity 0.8 but set the currently focused window to opacity 1.
+    /// Or if you want to skip some applications - in this case firefox - you would do something like:
+    ///
+    /// [tiling] opacity 0.8; [app_id="firefox"] opacity 1; opacity 1
+    #[structopt(short = "f", long = "on-window-focus")]
+    on_window_focus: Option<String>,
+    /// Called when persway exits. This can be used to reset any opacity changes
+    /// or other settings when persway exits. For example, if changing the opacity
+    /// on window focus, you would probably want to reset that on exit like this:
+    ///
+    /// [tiling] opacity 1
+    ///
+    /// Eg. set all tiling windows to opacity 1
+    #[structopt(short = "e", long = "on-exit")]
+    on_exit: Option<String>,
 }
 
 async fn handle_signals(signals: Signals) {
     let mut signals = signals.fuse();
     let args = Cli::from_args();
+    let on_exit = args.on_exit.unwrap_or(String::from(""));
     while let Some(signal) = signals.next().await {
         match signal {
             SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
-                if args.opacity < 1.0 {
-                    let mut commands = Connection::new().await.unwrap();
-                    commands.run_command("[tiling] opacity 1").await.unwrap();
-                };
+                let mut commands = Connection::new().await.unwrap();
+                commands.run_command(format!("{}", on_exit)).await.unwrap();
                 exit(0)
             }
             _ => unreachable!(),
@@ -52,12 +63,7 @@ async fn handle_signals(signals: Signals) {
 #[async_std::main]
 async fn main() -> Result<()> {
     let args = Cli::from_args();
-    let opacity_skip = args
-        .opacity_skip
-        .iter()
-        .map(|c| format!("[{}] opacity 1;", c))
-        .collect::<Vec<_>>()
-        .join(" ");
+    let on_window_focus = args.on_window_focus.unwrap_or(String::from(""));
 
     let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
     let handle = signals.handle();
@@ -70,14 +76,7 @@ async fn main() -> Result<()> {
         match event? {
             Event::Window(event) => match event.change {
                 WindowChange::Focus => {
-                    if args.opacity < 1.0 {
-                        let cmd = format!(
-                            "[tiling] opacity {}; {} opacity 1",
-                            args.opacity, opacity_skip
-                        );
-                        commands.run_command(&cmd).await?;
-                    }
-
+                    commands.run_command(format!("{}", on_window_focus)).await?;
                     if args.workspace_renaming {
                         if let Err(e) = rename_workspace(&event, &mut commands).await {
                             println!("workspace rename err: {}", e);
