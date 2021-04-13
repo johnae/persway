@@ -47,7 +47,7 @@ struct Cli {
 async fn handle_signals(signals: Signals) {
     let mut signals = signals.fuse();
     let args = Cli::from_args();
-    let on_exit = args.on_exit.unwrap_or(String::from(""));
+    let on_exit = args.on_exit.unwrap_or_else(|| String::from(""));
     while let Some(signal) = signals.next().await {
         match signal {
             SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
