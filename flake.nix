@@ -17,7 +17,7 @@
         cargoSha256 = "sha256-c/30fqLOw1WvDRNgH+Su0i0kNzWPZ+qZJ6tHGS+UWjM=";
         doCheck = false;
         meta = {
-          license = pkgs.stdenv.lib.licenses.mit;
+          license = pkgs.lib.licenses.mit;
           maintainers = [
             {
               email = "john@insane.se";
