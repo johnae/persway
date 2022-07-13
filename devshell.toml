@@ -1,0 +1,15 @@
+imports = ["./devshell/modules/rust.nix"]
+
+[devshell]
+packages = [ "pkgconfig", "openssl.dev", "gcc", "fenix.rust-analyzer" ]
+
+[language.rust]
+packageSet = "fenix.complete"
+tools = [
+  "rustc",
+  "cargo",
+  "clippy",
+  "rustfmt",
+  "rust-src",
+  "rust-std"
+]

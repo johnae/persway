@@ -1,48 +1,80 @@
 {
-  description = "Persway the friendly IPC daemon";
+  description = "Persway - the friendly IPC daemon";
 
   inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    dream2nix = {
+      url = "github:nix-community/dream2nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, fenix, nixpkgs, ... }:
-    let
-      package = pkgs: {
-        pname = "persway";
-        version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
-        src = self;
-        cargoSha256 = "sha256-HwkF62R+FPYtGfweGpps/hCpqkQRkAX7Gviet0hZifo=";        doCheck = false;
-        meta = {
-          license = pkgs.lib.licenses.mit;
-          maintainers = [
-            {
-              email = "john@insane.se";
-              github = "johnae";
-              name = "John Axel Eriksson";
-            }
-          ];
-        };
+  outputs = {
+    self,
+    dream2nix,
+    flake-utils,
+    devshell,
+    fenix,
+    nixpkgs,
+  }: let
+    l = nixpkgs.lib // builtins;
+    pkgsFor = system:
+      import nixpkgs {
+        inherit system;
+        overlays = [
+          devshell.overlay
+          fenix.overlay
+        ];
       };
-      supportedSystems = [ "x86_64-linux" "x86_64-darwin" ];
-      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems (system: f system);
-    in
-      let
-        pkgs = forAllSystems (system: import nixpkgs {
-          localSystem = { inherit system; };
-          overlays = [ fenix.overlay ];
-        });
-        rustPlatform = forAllSystems (system: pkgs.${system}.makeRustPlatform {
-          inherit (fenix.packages.${system}.minimal) cargo rustc;
-        });
-      in
-      {
-        overlay = final: prev: {
-          persway = prev.rustPlatform.buildRustPackage (package prev);
-        };
-        defaultPackage = forAllSystems (system: rustPlatform.${system}.buildRustPackage (package pkgs.${system}));
-        devShell = forAllSystems (system: import ./devshell.nix { pkgs = pkgs.${system}; });
+
+    initD2N = pkgs:
+      dream2nix.lib.init {
+        inherit pkgs;
+        config.projectRoot = ./.;
+        config.disableIfdWarning = true;
       };
+
+    makeOutputs = pkgs: let
+      outputs = (initD2N pkgs).makeOutputs {
+        source = ./.;
+        settings = [
+          {
+            builder = "crane";
+            translator = "cargo-lock";
+          }
+        ];
+      };
+    in {
+      packages.${pkgs.system} = outputs.packages;
+      checks.${pkgs.system} = {
+        inherit (outputs.packages) spotnix;
+      };
+    };
+    allOutputs = l.map makeOutputs (map pkgsFor flake-utils.lib.defaultSystems);
+    outputs = l.foldl' l.recursiveUpdate {} allOutputs;
+  in
+    {
+      overlays.default = final: prev: {
+        persway = self.packages.${prev.system}.persway;
+      };
+    }
+    // outputs
+    // (flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = pkgsFor system;
+    in {
+      devShells.default = pkgs.devshell.mkShell {
+        imports = [
+          (pkgs.devshell.importTOML ./devshell.toml)
+        ];
+      };
+    }));
 }
