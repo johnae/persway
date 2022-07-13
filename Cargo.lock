@@ -426,7 +426,7 @@ version = "0.4.1"
 dependencies = [
  "anyhow",
  "async-std",
- "signal-hook 0.3.1",
+ "signal-hook 0.3.8",
  "signal-hook-async-std",
  "structopt",
  "swayipc-async",
@@ -548,9 +548,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook"
-version = "0.3.1"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b3799fa361789a685db59e3986fb5f6f949e478728b9913c6759f7b014d0372"
+checksum = "ef33d6d0cd06e0840fba9985aab098c147e67e05cee14d412d3345ed14ff30ac"
 dependencies = [
  "libc",
  "signal-hook-registry",
@@ -565,7 +565,7 @@ dependencies = [
  "async-io",
  "futures-lite",
  "libc",
- "signal-hook 0.3.1",
+ "signal-hook 0.3.8",
 ]
 
 [[package]]
