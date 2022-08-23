@@ -603,9 +603,9 @@ dependencies = [
 
 [[package]]
 name = "swayipc-async"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f828f9cc0fe796ec7fc62264450592a65d1fac34fff1559b4fec22cc6074bcdd"
+checksum = "812eaecd6f9e658587570dffe2768d7b58410cbcaad6579dd44414a890594f74"
 dependencies = [
  "async-io",
  "async-pidfd",
