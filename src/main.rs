@@ -141,7 +141,7 @@ async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Re
     let current_ws = get_focused_workspace(conn).await?;
     let ws_num = current_ws
         .name
-        .split(": ")
+        .split(":")
         .next()
         .unwrap_or(&current_ws.name);
 
