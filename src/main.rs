@@ -33,6 +33,16 @@ struct Cli {
     /// [tiling] opacity 0.8; [app_id="firefox"] opacity 1; opacity 1
     #[structopt(short = "f", long = "on-window-focus")]
     on_window_focus: Option<String>,
+    /// Called when window leaves focus. To automatically mark these for example, you would set
+    /// this to:
+    ///
+    /// mark --add _prev
+    ///
+    /// and then in your sway config:
+    ///
+    /// bindsym Mod1+tab [con_mark=_prev] focus
+    #[structopt(short = "l", long = "on-window-focus-leave")]
+    on_window_focus_leave: Option<String>,
     /// Called when persway exits. This can be used to reset any opacity changes
     /// or other settings when persway exits. For example, if changing the opacity
     /// on window focus, you would probably want to reset that on exit like this:
@@ -66,6 +76,7 @@ async fn handle_signals(signals: Signals) {
 async fn main() -> Result<()> {
     let args = Cli::from_args();
     let on_window_focus = args.on_window_focus;
+    let on_window_focus_leave = args.on_window_focus_leave;
 
     let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
     let handle = signals.handle();
@@ -74,34 +85,61 @@ async fn main() -> Result<()> {
     let mut commands = Connection::new().await?;
     let subs = [EventType::Window];
     let mut events = Connection::new().await?.subscribe(&subs).await?;
+    let mut prev = None;
     while let Some(event) = events.next().await {
         match event? {
-            Event::Window(event) => match event.change {
-                WindowChange::Focus => {
-                    if let Some(window_focus_cmd) = &on_window_focus {
-                        commands.run_command(window_focus_cmd).await?;
-                    }
-                    if args.workspace_renaming {
-                        if let Err(e) = rename_workspace(&event, &mut commands).await {
-                            println!("workspace rename err: {}", e);
+            Event::Window(event) => {
+                match event.change {
+                    WindowChange::Focus => {
+                        // run focus leave hook
+                        if let Some(window_focus_leave_cmd) = &on_window_focus_leave {
+                            if let Some(id) = prev {
+                                commands
+                                    .run_command(format!(
+                                        "[con_id={id}] {}",
+                                        window_focus_leave_cmd
+                                    ))
+                                    .await?;
+                            }
                         }
-                    };
-
-                    if args.autolayout {
-                        if let Err(e) = autolayout(&mut commands).await {
-                            println!("autolayout err: {}", e);
+                        if let Some(window_focus_cmd) = &on_window_focus {
+                            commands.run_command(window_focus_cmd).await?;
+                        }
+                        if args.workspace_renaming {
+                            if let Err(e) = rename_workspace(&event, &mut commands).await {
+                                println!("workspace rename err: {}", e);
+                            }
                         };
-                    };
-                }
-                WindowChange::Close => {
-                    if args.workspace_renaming {
-                        if let Err(e) = rename_workspace(&event, &mut commands).await {
-                            println!("workspace rename err: {}", e);
+
+                        if args.autolayout {
+                            if let Err(e) = autolayout(&mut commands).await {
+                                println!("autolayout err: {}", e);
+                            };
+                        };
+                        prev = Some(event.container.id);
+                    }
+                    WindowChange::Close => {
+                        // run focus leave hook
+                        if let Some(window_focus_leave_cmd) = &on_window_focus_leave {
+                            if let Some(id) = prev {
+                                commands
+                                    .run_command(format!(
+                                        "[con_id={id}] {}",
+                                        window_focus_leave_cmd
+                                    ))
+                                    .await?;
+                            }
                         }
-                    };
+                        if args.workspace_renaming {
+                            if let Err(e) = rename_workspace(&event, &mut commands).await {
+                                println!("workspace rename err: {}", e);
+                            }
+                        };
+                        prev = None;
+                    }
+                    _ => {}
                 }
-                _ => {}
-            },
+            }
             _ => unreachable!(),
         }
     }
