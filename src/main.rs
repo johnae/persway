@@ -47,12 +47,14 @@ struct Cli {
 async fn handle_signals(signals: Signals) {
     let mut signals = signals.fuse();
     let args = Cli::from_args();
-    let on_exit = args.on_exit.unwrap_or_else(|| String::from(""));
+    let on_exit = args.on_exit;
     while let Some(signal) = signals.next().await {
         match signal {
             SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
                 let mut commands = Connection::new().await.unwrap();
-                commands.run_command(format!("{}", on_exit)).await.unwrap();
+                if let Some(exit_cmd) = on_exit {
+                    commands.run_command(exit_cmd).await.unwrap();
+                }
                 exit(0)
             }
             _ => unreachable!(),
@@ -63,7 +65,7 @@ async fn handle_signals(signals: Signals) {
 #[async_std::main]
 async fn main() -> Result<()> {
     let args = Cli::from_args();
-    let on_window_focus = args.on_window_focus.unwrap_or(String::from(""));
+    let on_window_focus = args.on_window_focus;
 
     let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
     let handle = signals.handle();
@@ -76,7 +78,9 @@ async fn main() -> Result<()> {
         match event? {
             Event::Window(event) => match event.change {
                 WindowChange::Focus => {
-                    commands.run_command(format!("{}", on_window_focus)).await?;
+                    if let Some(window_focus_cmd) = &on_window_focus {
+                        commands.run_command(window_focus_cmd).await?;
+                    }
                     if args.workspace_renaming {
                         if let Err(e) = rename_workspace(&event, &mut commands).await {
                             println!("workspace rename err: {}", e);
@@ -111,10 +115,10 @@ async fn autolayout(conn: &mut Connection) -> Result<()> {
     let tree = conn.get_tree().await?;
     let focused = tree
         .find_focused_as_ref(|n| n.focused)
-        .ok_or(anyhow!("No focused node"))?;
+        .ok_or_else(|| anyhow!("No focused node"))?;
     let parent = tree
         .find_focused_as_ref(|n| n.nodes.iter().any(|n| n.focused))
-        .ok_or(anyhow!("No parent"))?;
+        .ok_or_else(|| anyhow!("No parent"))?;
     let is_floating = focused.node_type == NodeType::FloatingCon;
     let is_full_screen = focused.percent.unwrap_or(1.0) > 1.0;
     let is_stacked = parent.layout == NodeLayout::Stacked;
@@ -134,18 +138,18 @@ async fn autolayout(conn: &mut Connection) -> Result<()> {
 async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
     ws.find(|w| w.focused)
-        .ok_or(anyhow!("No focused workspace"))
+        .ok_or_else(|| anyhow!("No focused workspace"))
 }
 
-async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Result<()> {
+async fn rename_workspace(event: &WindowEvent, conn: &mut Connection) -> Result<()> {
     let current_ws = get_focused_workspace(conn).await?;
     let ws_num = current_ws
         .name
-        .split(":")
+        .split(':')
         .next()
         .unwrap_or(&current_ws.name);
 
-    if current_ws.focus.len() == 0 {
+    if current_ws.focus.is_empty() {
         let cmd = format!("rename workspace to {}", ws_num);
         conn.run_command(&cmd).await?;
         return Ok(());
@@ -153,10 +157,7 @@ async fn rename_workspace(event: &Box<WindowEvent>, conn: &mut Connection) -> Re
 
     let app_id = event.container.app_id.as_ref();
     let window_properties = event.container.window_properties.as_ref();
-    let app_name = app_id.map_or_else(
-        || window_properties.and_then(|p| p.class.as_ref()),
-        |name| Some(name),
-    );
+    let app_name = app_id.map_or_else(|| window_properties.and_then(|p| p.class.as_ref()), Some);
 
     if let Some(app_name) = app_name {
         let newname = format!(
