@@ -48,6 +48,14 @@ OPTIONS:
             to skip some applications - in this case firefox - you would do something like:
 
             [tiling] opacity 0.8; [app_id="firefox"] opacity 1; opacity 1
+    -l, --on-window-focus-leave <on-window-focus-leave>
+            Called when window leaves focus. To automatically mark these for example, you would set this to:
+
+            mark --add _prev
+
+            and then in your sway config:
+
+            bindsym Mod1+tab [con_mark=_prev] focus
 ```
 
 If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784 - the gist of it is that it is likely a sway config issue.
