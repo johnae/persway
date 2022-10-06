@@ -193,18 +193,26 @@ async fn rename_workspace(event: &WindowEvent, conn: &mut Connection) -> Result<
         return Ok(());
     }
 
-    let app_id = event.container.app_id.as_ref();
-    let window_properties = event.container.window_properties.as_ref();
-    let app_name = app_id.map_or_else(|| window_properties.and_then(|p| p.class.as_ref()), Some);
+    let app_id = event.container.app_id.as_ref()
+        .and_then(|id| if id.is_empty() { None } else { Some(id) });
+
+    let name = event.container.name.as_ref()
+        .and_then(|name| if name.is_empty() { None } else { name.split('|').next().map(|s| s.to_string()) });
+
+    let class = event.container.window_properties.as_ref()
+        .and_then(|p|
+                  p.class.as_ref().and_then(|class| if class.is_empty() { None } else { Some(class) })
+        );
+
+    let app_name = app_id.or(class);
+    let app_name = app_name.or(name.as_ref());
+    let app_name = app_name.map(|n| n.trim_start_matches('-').trim_end_matches('-').trim_end_matches(' ').to_lowercase() );
 
     if let Some(app_name) = app_name {
         let newname = format!(
             "{}: {}",
             ws_num,
             app_name
-                .trim_start_matches('-')
-                .trim_end_matches('-')
-                .to_lowercase()
         );
         let cmd = format!("rename workspace to {}", newname);
         conn.run_command(&cmd).await?;
