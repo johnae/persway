@@ -40,7 +40,6 @@
       dream2nix.lib.init {
         inherit pkgs;
         config.projectRoot = ./.;
-        config.disableIfdWarning = true;
       };
 
     makeOutputs = pkgs: let
