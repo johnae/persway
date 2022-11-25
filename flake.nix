@@ -43,7 +43,7 @@
       };
 
     makeOutputs = pkgs: let
-      outputs = (initD2N pkgs).makeOutputs {
+      outputs = (initD2N pkgs).dream2nix-interface.makeOutputs {
         source = ./.;
         settings = [
           {
