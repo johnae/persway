@@ -333,7 +333,7 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
                 {
                     debug!("count is 1..., stack_visible: {:?}", stack_visible);
                     format!(
-                        "[con_id={}] focus; layout splith; [con_id={}] mark --add {}",
+                        "[con_id={}] focus; layout splith; move up; [con_id={}] mark --add {}",
                         stack_visible.id, stack_visible.id, master_mark
                     )
                 } else {
