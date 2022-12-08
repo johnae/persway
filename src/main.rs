@@ -132,6 +132,7 @@ impl<'a> IntoLinearNodeIterator for &'a Node {
     }
 }
 
+#[derive(Clone)]
 struct LinearNodeIterator<'a> {
     stack: Vec<&'a Node>,
 }
@@ -175,6 +176,14 @@ async fn get_node_workspace(connection: &mut Connection, node_id: i64) -> Result
     Err(anyhow!("Couldn't find the node workspace"))
 }
 
+fn get_stack_mark(id: i64) -> String {
+    format!("_stack_{}", id)
+}
+
+fn get_master_mark(id: i64) -> String {
+    format!("_master_{}", id)
+}
+
 #[async_trait]
 trait WindowEventHandler {
     async fn handle(&mut self, event: &Box<WindowEvent>);
@@ -205,7 +214,7 @@ impl<'a> WorkspaceSpiralLayoutHandler<'a> {
         let wslayout = if let Some(auto_layout) = self.auto_layout {
             auto_layout
                 .get((ws.num - 1) as usize)
-                .unwrap_or_else(|| &self.default_layout)
+                .unwrap_or_else(|| self.default_layout)
         } else {
             self.default_layout
         };
@@ -284,9 +293,9 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
         let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
             auto_layout
                 .get((ws.num - 1) as usize)
-                .unwrap_or_else(|| &self.default_layout)
+                .unwrap_or_else(|| self.default_layout)
         } else {
-            &self.default_layout
+            self.default_layout
         };
 
         if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
@@ -294,7 +303,7 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
         }
         match wstree.nodes.len() {
             1 => {
-                let master_mark = format!("_master_{}", ws.id);
+                let master_mark = get_master_mark(ws.id);
                 let cmd = format!(
                     "[con_mark={}] unmark {}; split h; [con_id={}] mark --add {}",
                     master_mark, master_mark, event.container.id, master_mark
@@ -302,8 +311,8 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
                 Ok(self.connection.run_command(cmd).await?)
             }
             2 => {
-                let stack_mark = format!("_stack_{}", ws.id);
-                let master_mark = format!("_master_{}", ws.id);
+                let stack_mark = get_stack_mark(ws.id);
+                let master_mark = get_master_mark(ws.id);
                 let master = wstree
                     .into_linear_iter()
                     .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
@@ -351,8 +360,8 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
                     .next()
                     .unwrap();
 
-                let stack_mark = format!("_stack_{}", ws.id);
-                let master_mark = format!("_master_{}", ws.id);
+                let stack_mark = get_stack_mark(ws.id);
+                let master_mark = get_master_mark(ws.id);
 
                 let cmd = format!(
                           "[con_mark={}] unmark {}; [con_mark={}] unmark {}; [con_id={}] mark --add {}; [con_id={}] mark --add {}; [con_id={}] focus; move container to mark {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
@@ -375,14 +384,14 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let master_mark = format!("_master_{}", ws.id);
+        let master_mark = get_master_mark(ws.id);
 
         let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
             auto_layout
                 .get((ws.num - 1) as usize)
-                .unwrap_or_else(|| &self.default_layout)
+                .unwrap_or_else(|| self.default_layout)
         } else {
-            &self.default_layout
+            self.default_layout
         };
 
         if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
@@ -647,19 +656,40 @@ impl WindowEventHandler for WindowFocusCommandHandler<'_> {
 
 struct MasterStackController<'a> {
     connection: &'a mut Connection,
+    auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+    default_layout: &'a WorkspaceLayout,
 }
 
 impl<'a> MasterStackController<'a> {
-    fn new(connection: &'a mut Connection) -> Self {
-        Self { connection }
+    fn new(
+        connection: &'a mut Connection,
+        auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+        default_layout: &'a WorkspaceLayout,
+    ) -> Self {
+        Self {
+            connection,
+            auto_layout,
+            default_layout,
+        }
     }
 
     async fn stack_focus_prev(&mut self) -> Result<Vec<Result<(), swayipc_async::Error>>> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = format!("_stack_{}", ws.id);
-        let master_mark = format!("_master_{}", ws.id);
+        let stack_mark = get_stack_mark(ws.id);
+        let master_mark = get_master_mark(ws.id);
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| self.default_layout)
+        } else {
+            self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
         if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
             if stack.nodes.len() == 0 {
                 return Ok(Vec::new());
@@ -687,8 +717,21 @@ impl<'a> MasterStackController<'a> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = format!("_stack_{}", ws.id);
-        let master_mark = format!("_master_{}", ws.id);
+        let stack_mark = get_stack_mark(ws.id);
+        let master_mark = get_master_mark(ws.id);
+
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| self.default_layout)
+        } else {
+            self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
+
         if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
             if stack.nodes.len() == 0 {
                 return Ok(Vec::new());
@@ -712,12 +755,99 @@ impl<'a> MasterStackController<'a> {
         Ok(Vec::new())
     }
 
+    async fn master_cycle_next(&mut self) -> Result<Vec<Result<(), swayipc_async::Error>>> {
+        let tree = self.connection.get_tree().await?;
+        let ws = get_focused_workspace(&mut self.connection).await?;
+        let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
+        let stack_mark = get_stack_mark(ws.id);
+        let master_mark = get_master_mark(ws.id);
+
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| self.default_layout)
+        } else {
+            self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
+
+        if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
+            if stack.nodes.len() == 0 {
+                return Ok(Vec::new());
+            }
+            let master = wstree
+                .into_linear_iter()
+                .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
+                .max_by(|x, y| x.rect.x.cmp(&y.rect.x))
+                .expect("master node should be found");
+            let stack_first = stack
+                .into_linear_iter()
+                .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
+                .next()
+                .unwrap();
+            let cmd = format!(
+                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
+                master.id, stack_first.id, stack_first.id,
+                master_mark, master_mark, stack_first.id, master_mark
+            );
+            debug!("{}", cmd);
+            self.connection.run_command(cmd).await?;
+
+            let tree = self.connection.get_tree().await?;
+            let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
+            let stack = wstree
+                .find_as_ref(|n| n.marks.contains(&stack_mark))
+                .unwrap();
+            let stack_leaves = stack
+                .into_linear_iter()
+                .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
+                .map(|n| n.id)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev();
+            let mut cycling_stack_leaves = stack_leaves.clone().cycle();
+            cycling_stack_leaves.next();
+
+            let mut veccmd = Vec::new();
+            for node_id in stack_leaves {
+                let cmd = format!(
+                    "[con_id={}] focus; swap container with con_id {}; ",
+                    node_id,
+                    cycling_stack_leaves.next().unwrap()
+                );
+                debug!("veccmd.push: {}", cmd);
+                veccmd.push(cmd);
+            }
+            veccmd.push(format!("[con_mark={}] focus; ", master_mark));
+            let cmd = veccmd.join("");
+            debug!("master_cycle_next: {}", cmd);
+            return Ok(self.connection.run_command(cmd).await?);
+        }
+        Ok(Vec::new())
+    }
+
     async fn swap_visible(&mut self) -> Result<Vec<Result<(), swayipc_async::Error>>> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = format!("_stack_{}", ws.id);
-        let master_mark = format!("_master_{}", ws.id);
+        let stack_mark = get_stack_mark(ws.id);
+        let master_mark = get_master_mark(ws.id);
+
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| self.default_layout)
+        } else {
+            self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
+
         if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
             if stack.nodes.len() == 0 {
                 return Ok(Vec::new());
@@ -726,11 +856,13 @@ impl<'a> MasterStackController<'a> {
                 .find_as_ref(|n| n.marks.contains(&master_mark))
                 .expect("A master node to exist");
             let stack_visible = stack
-                .find_as_ref(|n| n.visible.is_some() && n.visible.unwrap() == true)
+                .find_as_ref(|n| {
+                    n.nodes.len() == 0 && n.visible.is_some() && n.visible.unwrap() == true
+                })
                 .expect("Stack to contain a visible node");
             let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                master.id, stack_visible.id, stack_visible.id
+                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
+                master.id, stack_visible.id, stack_visible.id, master_mark, master_mark, stack_visible.id, master_mark
             );
             debug!("{}", cmd);
             return Ok(self.connection.run_command(cmd).await?);
@@ -838,7 +970,8 @@ async fn main() -> Result<()> {
     let mut input = BufReader::new(&inputpipe);
 
     let mut conn = Connection::new().await?;
-    let mut master_stack_controller = MasterStackController::new(&mut conn);
+    let mut master_stack_controller =
+        MasterStackController::new(&mut conn, &args.auto_layout, &args.default_layout);
 
     loop {
         let mut inputdata = String::from("");
@@ -866,6 +999,9 @@ async fn main() -> Result<()> {
                                 error!("stack focus prev failed: {}", e)
                             },
                             PerswayCommand::SwapVisible => if let Err(e) = master_stack_controller.swap_visible().await {
+                                error!("swap visible failed: {}", e)
+                            }
+                            PerswayCommand::MasterCycleNext => if let Err(e) = master_stack_controller.master_cycle_next().await {
                                 error!("swap visible failed: {}", e)
                             }
                             _ => debug!("skipping command: {:?}", cmd)
