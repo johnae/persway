@@ -2,7 +2,7 @@
 name = "persway"
 version = "0.4.1"
 authors = ["John Axel Eriksson <john@insane.se>"]
-edition = "2018"
+edition = "2021"
 description = "Sway IPC daemon"
 repository = "https://github.com/johnae/persway"
 readme = "README.md"
@@ -12,8 +12,14 @@ keywords = ["sway", "swaywm", "swayipc", "ipc", "async"]
 
 [dependencies]
 structopt = "0.3"
+nix = "0.26"
+log = "0.4"
+env_logger = "0.10"
 swayipc-async = "2.0.1"
-async-std = { version = "1", features = ["attributes"]}
+swayipc-types = "1.3.0"
+async-std = { version = "1.12", features = ["attributes"]}
 signal-hook-async-std = "0.2"
 signal-hook = "0.3"
 anyhow = "1"
+async-trait = "0.1.59"
+futures = "0.3"

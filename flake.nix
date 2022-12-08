@@ -32,7 +32,7 @@
         inherit system;
         overlays = [
           devshell.overlay
-          fenix.overlay
+          fenix.overlays.default
         ];
       };
 
