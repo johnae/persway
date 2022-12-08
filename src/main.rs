@@ -10,7 +10,7 @@ use futures::{select, FutureExt};
 use log::{debug, error, info, warn};
 use signal_hook::consts::signal::*;
 use signal_hook_async_std::Signals;
-use std::{array::IntoIter, process::exit, str::FromStr};
+use std::{process::exit, str::FromStr};
 use structopt::StructOpt;
 use swayipc_async::{
     Connection, Event, EventType, NodeLayout, NodeType, WindowChange, WindowEvent, Workspace,
@@ -26,10 +26,15 @@ use nix::unistd;
 /// I talk to the Sway Compositor and persuade it to do little evil things.
 /// Give me an option and see what it brings.
 struct Cli {
-    /// Enable autolayout, alternating between horizontal and vertical
-    /// somewhat reminiscent of the Awesome WM.
-    #[structopt(short = "a", long = "autolayout")]
-    autolayout: bool,
+    /// Enable different layouts on workspaces. The order in which they appear
+    /// correspond to workspace numbers so - the first correspond to workspace 1,
+    /// the second to workspace 2 etc.
+    #[structopt(short = "a", long = "auto_layout")]
+    auto_layout: Option<Vec<WorkspaceLayout>>,
+    /// Which layout should be the default when no other layout has been specified for
+    /// a workspace.
+    #[structopt(short = "d", long = "default_layout", default_value = "manual")]
+    default_layout: WorkspaceLayout,
     /// Enable automatic workspace renaming based on what is running
     /// in the workspace (eg. application name).
     #[structopt(short = "w", long = "workspace-renaming")]
@@ -40,9 +45,6 @@ struct Cli {
     /// swap them in on a primary monitor with a certain layout at will.
     #[structopt(short = "m", long = "mark-new-windows")]
     mark_new_windows: bool,
-    /// Enable a master stack layout
-    #[structopt(short = "s", long = "master-stack")]
-    master_stack: bool,
     /// Called when window comes into focus. To automatically set the opacity of
     /// all other windows to 0.8 for example, you would set this to:
     ///
@@ -74,13 +76,26 @@ struct Cli {
     #[structopt(short = "e", long = "on-exit")]
     on_exit: Option<String>,
     /// Path to control socket.
-    socket_path: Option<String>,
+    socket_path: Option<String>, // TODO: make this a socket instead
+}
+
+impl FromStr for WorkspaceLayout {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "spiral" => Ok(Self::Spiral),
+            "master_stack" => Ok(Self::MasterStack),
+            "manual" => Ok(Self::Manual),
+            _ => Err(anyhow!("I don't know about the layout '{}'", s)),
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum WorkspaceLayout {
     Spiral,
     MasterStack,
+    Manual,
 }
 
 #[derive(Debug)]
@@ -165,17 +180,43 @@ trait WindowEventHandler {
     async fn handle(&mut self, event: &Box<WindowEvent>);
 }
 
-struct WorkspaceAutoLayoutHandler<'a> {
+struct WorkspaceSpiralLayoutHandler<'a> {
     connection: &'a mut Connection,
+    auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+    default_layout: &'a WorkspaceLayout,
 }
 
-impl<'a> WorkspaceAutoLayoutHandler<'a> {
-    fn new(connection: &'a mut Connection) -> Self {
-        Self { connection }
+impl<'a> WorkspaceSpiralLayoutHandler<'a> {
+    fn new(
+        connection: &'a mut Connection,
+        auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+        default_layout: &'a WorkspaceLayout,
+    ) -> Self {
+        Self {
+            connection,
+            auto_layout,
+            default_layout,
+        }
     }
 
     async fn layout(&mut self) -> Result<()> {
         let tree = self.connection.get_tree().await?;
+        let ws = get_focused_workspace(&mut self.connection).await?;
+        let wslayout = if let Some(auto_layout) = self.auto_layout {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| &self.default_layout)
+        } else {
+            self.default_layout
+        };
+        if !matches!(*wslayout, WorkspaceLayout::Spiral) {
+            debug!(
+                "skip spiral handler: {:?} doesn't match {:?}",
+                *wslayout,
+                WorkspaceLayout::Spiral
+            );
+            return Ok(());
+        }
         let focused = tree
             .find_focused_as_ref(|n| n.focused)
             .ok_or_else(|| anyhow!("No focused node"))?;
@@ -199,12 +240,12 @@ impl<'a> WorkspaceAutoLayoutHandler<'a> {
     }
 }
 #[async_trait]
-impl WindowEventHandler for WorkspaceAutoLayoutHandler<'_> {
+impl WindowEventHandler for WorkspaceSpiralLayoutHandler<'_> {
     async fn handle(&mut self, event: &Box<WindowEvent>) {
         match event.change {
             WindowChange::Focus => {
                 if let Err(e) = self.layout().await {
-                    error!("autolayout handler, layout err: {}", e);
+                    error!("spiral layout handler, layout err: {}", e);
                 };
             }
             _ => {}
@@ -214,11 +255,21 @@ impl WindowEventHandler for WorkspaceAutoLayoutHandler<'_> {
 
 struct WorkspaceMasterStackLayoutHandler<'a> {
     connection: &'a mut Connection,
+    auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+    default_layout: &'a WorkspaceLayout,
 }
 
 impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
-    fn new(connection: &'a mut Connection) -> Self {
-        Self { connection }
+    fn new(
+        connection: &'a mut Connection,
+        auto_layout: &'a Option<Vec<WorkspaceLayout>>,
+        default_layout: &'a WorkspaceLayout,
+    ) -> Self {
+        Self {
+            connection,
+            auto_layout,
+            default_layout,
+        }
     }
 
     async fn on_new_window(
@@ -230,6 +281,17 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
         debug!("new_window: {:?}", event.container.id);
         debug!("nodes_len: {}", wstree.nodes.len());
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| &self.default_layout)
+        } else {
+            &self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
         match wstree.nodes.len() {
             1 => {
                 let master_mark = format!("_master_{}", ws.id);
@@ -315,6 +377,18 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
         let master_mark = format!("_master_{}", ws.id);
 
+        let wslayout = if let Some(auto_layout) = self.auto_layout.as_ref() {
+            auto_layout
+                .get((ws.num - 1) as usize)
+                .unwrap_or_else(|| &self.default_layout)
+        } else {
+            &self.default_layout
+        };
+
+        if !matches!(*wslayout, WorkspaceLayout::MasterStack) {
+            return Ok(Vec::new());
+        }
+
         if event.container.marks.contains(&master_mark) {
             if let Some(stack) = wstree
                 .nodes
@@ -355,6 +429,7 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
     ) -> Result<Vec<Result<(), swayipc_async::Error>>> {
         let ws = get_node_workspace(&mut self.connection, event.container.id).await?;
         let focused_ws = get_focused_workspace(&mut self.connection).await?;
+
         if ws.id == focused_ws.id {
             debug!("move_window within workspace: {:?}", event);
             return self.on_new_window(event).await;
@@ -705,7 +780,8 @@ async fn main() -> Result<()> {
     );
 
     let mut conn = Connection::new().await?;
-    let ws_autolayout_handler = WorkspaceAutoLayoutHandler::new(&mut conn);
+    let ws_spiral_layout_handler =
+        WorkspaceSpiralLayoutHandler::new(&mut conn, &args.auto_layout, &args.default_layout);
 
     let mut conn = Connection::new().await?;
     let new_window_marker_handler = NewWindowMarkerHandler::new(&mut conn);
@@ -714,18 +790,19 @@ async fn main() -> Result<()> {
     let ws_renaming_handler = WorkspaceRenamingHandler::new(&mut conn);
 
     let mut conn = Connection::new().await?;
-    let ws_master_stack_handler = WorkspaceMasterStackLayoutHandler::new(&mut conn);
+    let ws_master_stack_handler =
+        WorkspaceMasterStackLayoutHandler::new(&mut conn, &args.auto_layout, &args.default_layout);
 
     let mut window_handlers: Vec<Box<dyn WindowEventHandler>> = Vec::new();
-    if args.autolayout {
-        window_handlers.push(Box::new(ws_autolayout_handler));
-    } else if args.master_stack {
-        window_handlers.push(Box::new(ws_master_stack_handler));
-    }
+
+    window_handlers.push(Box::new(ws_spiral_layout_handler));
+    window_handlers.push(Box::new(ws_master_stack_handler));
+    window_handlers.push(Box::new(window_focus_command_handler));
+
     if args.mark_new_windows {
         window_handlers.push(Box::new(new_window_marker_handler));
     }
-    window_handlers.push(Box::new(window_focus_command_handler));
+
     if args.workspace_renaming {
         window_handlers.push(Box::new(ws_renaming_handler));
     }
