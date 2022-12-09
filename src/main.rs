@@ -778,6 +778,43 @@ impl<'a> MasterStackController<'a> {
             if stack.nodes.len() == 0 {
                 return Ok(Vec::new());
             }
+
+            let stack_leaves = stack
+                .into_linear_iter()
+                .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con);
+
+            let stack_ids = stack_leaves.clone().map(|n| n.id).collect::<Vec<_>>();
+            let mut stack_leaves_next = stack_leaves.clone();
+            stack_leaves_next.next();
+
+            let mut veccmd = Vec::new();
+            for node in stack_leaves {
+                if let Some(next) = stack_leaves_next.next() {
+                    let cmd = format!(
+                        "[con_id={}] focus; swap container with con_id {}; ",
+                        node.id, next.id
+                    );
+                    debug!("veccmd.push: {}", cmd);
+                    veccmd.push(cmd);
+                } else {
+                    break;
+                }
+            }
+            veccmd.push(format!(
+                "[con_id={}] focus; [con_mark={}] focus; ",
+                stack.nodes.last().unwrap().id,
+                master_mark
+            ));
+            let cmd = veccmd.join("");
+            debug!("master_cycle_next: {}", cmd);
+            self.connection.run_command(cmd).await?;
+
+            let tree = self.connection.get_tree().await?;
+            let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
+            let stack = wstree
+                .find_as_ref(|n| n.marks.contains(&stack_mark))
+                .unwrap();
+
             let master = wstree
                 .into_linear_iter()
                 .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
@@ -786,44 +823,18 @@ impl<'a> MasterStackController<'a> {
             let stack_first = stack
                 .into_linear_iter()
                 .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
-                .next()
-                .unwrap();
-            let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
-                master.id, stack_first.id, stack_first.id,
-                master_mark, master_mark, stack_first.id, master_mark
-            );
-            debug!("{}", cmd);
-            self.connection.run_command(cmd).await?;
-
-            let tree = self.connection.get_tree().await?;
-            let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-            let stack = wstree
-                .find_as_ref(|n| n.marks.contains(&stack_mark))
-                .unwrap();
-            let stack_leaves = stack
-                .into_linear_iter()
-                .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con)
                 .map(|n| n.id)
                 .collect::<Vec<_>>()
                 .into_iter()
-                .rev();
-            let mut cycling_stack_leaves = stack_leaves.clone().cycle();
-            cycling_stack_leaves.next();
+                .next()
+                .unwrap();
 
-            let mut veccmd = Vec::new();
-            for node_id in stack_leaves {
-                let cmd = format!(
-                    "[con_id={}] focus; swap container with con_id {}; ",
-                    node_id,
-                    cycling_stack_leaves.next().unwrap()
-                );
-                debug!("veccmd.push: {}", cmd);
-                veccmd.push(cmd);
-            }
-            veccmd.push(format!("[con_mark={}] focus; ", master_mark));
-            let cmd = veccmd.join("");
-            debug!("master_cycle_next: {}", cmd);
+            let cmd = format!(
+                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
+                master.id, stack_first, stack_first,
+                master_mark, master_mark, stack_first, master_mark
+            );
+            debug!("{}", cmd);
             return Ok(self.connection.run_command(cmd).await?);
         }
         Ok(Vec::new())
