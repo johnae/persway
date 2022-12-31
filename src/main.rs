@@ -326,16 +326,15 @@ impl<'a> WorkspaceMasterStackLayoutHandler<'a> {
                     .expect("Couldn't determine which node is the stack, none found");
                 let stacked = stack.layout == NodeLayout::Stacked;
 
-                debug!("is stacked already: {}", stacked);
                 let cmd = if !stacked {
                     format!(
-                      "[con_mark={}] unmark {}; [con_mark={}] unmark {}; [con_id={}] mark --add {}; [con_id={}] mark --add {}; [con_id={}] focus; split v; layout stacking; resize set width 25; [con_id={}] focus",
-                      stack_mark, stack_mark, master_mark, master_mark, stack.id, stack_mark, master.id, master_mark, stack.id, master.id
+                      "[con_id={}] mark --add {}; [con_id={}] focus; split v; layout stacking; resize set width 25; [con_id={}] focus parent; mark --add {}; [con_id={}] focus",
+                      master.id, master_mark, stack.id, stack.id, stack_mark, master.id
                     )
                 } else {
                     format!(
-                      "[con_mark={}] unmark {}; [con_mark={}] unmark {}; [con_id={}] mark --add {}; [con_id={}] mark --add {}",
-                      stack_mark, stack_mark, master_mark, master_mark, stack.id, stack_mark, master.id, master_mark
+                        "[con_id={}] mark --add {}; [con_id={}] mark --add {}",
+                        stack.id, stack_mark, master.id, master_mark
                     )
                 };
 
