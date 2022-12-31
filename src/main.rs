@@ -782,7 +782,6 @@ impl<'a> MasterStackController<'a> {
                 .into_linear_iter()
                 .filter(|n| n.nodes.len() == 0 && n.node_type == NodeType::Con);
 
-            let stack_ids = stack_leaves.clone().map(|n| n.id).collect::<Vec<_>>();
             let mut stack_leaves_next = stack_leaves.clone();
             stack_leaves_next.next();
 
