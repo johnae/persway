@@ -529,6 +529,8 @@ impl<'a> WorkspaceRenamingHandler<'a> {
         });
 
         if let Some(app_name) = app_name {
+            let app_name = app_name.split(" ").next().expect("split ' ' succeded");
+            let app_name = app_name.split(".").last().expect("split on . succeeded");
             let newname = format!("{}: {}", ws_num, app_name);
             let cmd = format!("rename workspace to {}", newname);
             debug!("{}", cmd);
