@@ -84,10 +84,10 @@ pub enum WorkspaceLayout {
     /// The stack_main autotiling layout keeps a stack of windows on the side of a larger main area, this layout comes with a few commands to control it as well
     StackMain {
         /// Size of the main area in percent
-        #[arg(long, short = 's', value_parser = size_in_range)]
+        #[arg(long, short = 's', value_parser = size_in_range, default_value_t = 70)]
         size: u8,
-        /// The sway layout of the stack: tabbed, tiled or stacked. Stacked is the default.
-        #[arg(long, short = 'l', value_parser = size_in_range)]
+        /// The sway layout of the stack: tabbed, tiled or stacked.
+        #[arg(long, short = 'l', default_value_t = StackLayout::Stacked)]
         stack_layout: StackLayout,
     },
     /// The normal sway dynamic tiling
