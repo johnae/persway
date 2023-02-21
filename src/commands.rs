@@ -3,7 +3,7 @@ use crate::layout::WorkspaceLayout;
 #[derive(clap::Parser, Debug)]
 pub struct DaemonArgs {
     /// Which layout should be the default when no other layout has been specified for
-    /// a workspace.
+    /// a workspace. Options are: manual, spiral and stack_main.
     #[arg(long, short = 'd', default_value = "manual")]
     pub default_layout: WorkspaceLayout,
 
@@ -50,15 +50,15 @@ pub struct DaemonArgs {
 pub enum PerswayCommand {
     /// This starts the persway daemon
     Daemon(DaemonArgs),
-    /// In the stack main layout - this focuses the next stacked window
+    /// Applies to stack main layout - focuses the next stacked window
     StackFocusNext,
-    /// In the stack main layout - this focuses the previous stacked window
+    /// Applies to stack main layout - focuses the previous stacked window
     StackFocusPrev,
-    /// In the stack main layout - this swaps the visible stacked window with the main window
+    /// Applies to stack main layout - swaps the visible stacked window with the main window
     StackSwapVisible,
-    /// In the stack main layout - this pops the top of the stack which becomes the main window while rotating the previous main window into the bottom of the stack
+    /// Applies to stack main layout - pops the top of the stack into main while pushing the old main window to the bottom of the stack
     StackMainRotateNext,
-    /// This changes the layout of the focused workspace
+    /// Changes the layout of the focused workspace
     ChangeLayout {
         /// Change the layout of the focused workspace, can be any of:
         /// manual, spiral, stack_main

@@ -10,10 +10,14 @@ mod utils;
 
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
+/// I am Persway. A friendly daemon.
+///
+/// I talk to the Sway Compositor and persuade it to do little evil things.
+/// Give me an option and see what it brings. I also talk to myself.
 struct Args {
     #[command(subcommand)]
     command: commands::PerswayCommand,
-    /// Path to control socket.
+    /// Path to control socket. This option applies both to daemon and client.
     /// Defaults to <XDG_RUNTIME_DIR>/persway-<WAYLAND_DISPLAY>.sock
     #[arg(long, short = 's')]
     socket_path: Option<String>,

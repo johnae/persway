@@ -1,6 +1,6 @@
 [package]
 name = "persway"
-version = "0.4.1"
+version = "0.6.0"
 authors = ["John Axel Eriksson <john@insane.se>"]
 edition = "2021"
 description = "Sway IPC daemon"
