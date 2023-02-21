@@ -55,15 +55,17 @@ impl MessageHandler {
         log::debug!("controller.handle_event: {:?}", event.change);
         let mut conn = Connection::new().await?;
         let ws = utils::get_focused_workspace(&mut conn).await?;
-        match self.get_workspace_config(ws.num).layout {
+        match &self.get_workspace_config(ws.num).layout {
             WorkspaceLayout::Spiral => {
                 log::debug!("handling event via spiral manager");
                 task::spawn(managers::layout::spiral::Spiral::handle(event.clone()));
             }
-            WorkspaceLayout::StackMain => {
+            WorkspaceLayout::StackMain { stack_layout, size } => {
                 log::debug!("handling event via stack_main manager");
                 task::spawn(managers::layout::stack_main::StackMain::handle(
                     event.clone(),
+                    *size,
+                    stack_layout.clone(),
                 ));
             }
             WorkspaceLayout::Manual => {}
@@ -134,30 +136,34 @@ impl MessageHandler {
                     );
                 }
             }
-            PerswayCommand::StackFocusNext => {
-                if current_ws_config.layout == WorkspaceLayout::StackMain {
+            PerswayCommand::StackFocusNext => match current_ws_config.layout {
+                WorkspaceLayout::StackMain { .. } => {
                     let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_focus_next().await?
                 }
-            }
-            PerswayCommand::StackFocusPrev => {
-                if current_ws_config.layout == WorkspaceLayout::StackMain {
+                _ => {}
+            },
+            PerswayCommand::StackFocusPrev => match current_ws_config.layout {
+                WorkspaceLayout::StackMain { .. } => {
                     let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_focus_prev().await?
                 }
-            }
-            PerswayCommand::StackMainRotateNext => {
-                if current_ws_config.layout == WorkspaceLayout::StackMain {
+                _ => {}
+            },
+            PerswayCommand::StackMainRotateNext => match current_ws_config.layout {
+                WorkspaceLayout::StackMain { .. } => {
                     let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_main_rotate_next().await?
                 }
-            }
-            PerswayCommand::StackSwapVisible => {
-                if current_ws_config.layout == WorkspaceLayout::StackMain {
+                _ => {}
+            },
+            PerswayCommand::StackSwapVisible => match current_ws_config.layout {
+                WorkspaceLayout::StackMain { .. } => {
                     let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;
                     ctrl.swap_visible().await?
                 }
-            }
+                _ => {}
+            },
             PerswayCommand::Daemon(_) => unreachable!(),
         }
         Ok(())

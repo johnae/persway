@@ -62,7 +62,7 @@ pub enum PerswayCommand {
     ChangeLayout {
         /// Change the layout of the focused workspace, can be any of:
         /// manual, spiral, stack_main
-        #[arg(long)]
+        #[command(subcommand)]
         layout: WorkspaceLayout,
     },
 }

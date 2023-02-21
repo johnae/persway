@@ -1,4 +1,5 @@
 use crate::{
+    layout::StackLayout,
     node_ext::NodeExt,
     utils::{self, get_focused_workspace, get_main_mark, get_stack_mark},
 };
@@ -11,18 +12,24 @@ use super::super::traits::WindowEventHandler;
 
 pub struct StackMain {
     connection: Connection,
+    size: u8,
+    stack_layout: StackLayout,
 }
 
 impl StackMain {
-    pub async fn handle(event: Box<WindowEvent>) {
-        if let Ok(mut manager) = Self::new().await {
+    pub async fn handle(event: Box<WindowEvent>, size: u8, stack_layout: StackLayout) {
+        if let Ok(mut manager) = Self::new(size, stack_layout).await {
             manager.handle(event).await;
         }
     }
 
-    pub async fn new() -> Result<Self> {
+    pub async fn new(size: u8, stack_layout: StackLayout) -> Result<Self> {
         let connection = Connection::new().await?;
-        Ok(Self { connection })
+        Ok(Self {
+            connection,
+            size,
+            stack_layout,
+        })
     }
 
     async fn on_new_window(&mut self, event: &WindowEvent) -> Result<()> {
@@ -39,6 +46,11 @@ impl StackMain {
         log::debug!("new_window: {:?}", event.container.id);
         log::debug!("nodes_len: {}", wstree.nodes.len());
         log::debug!("wstree: {:?}", wstree);
+        let layout = match self.stack_layout {
+            StackLayout::Tabbed => "split v; layout tabbed",
+            StackLayout::Stacked => "split v; layout stacking",
+            StackLayout::Tiled => "split v",
+        };
         match wstree.nodes.len() {
             1 => {
                 let main_mark = get_main_mark(ws.id);
@@ -57,8 +69,8 @@ impl StackMain {
 
                 let cmd = if stack.is_window() {
                     format!(
-                      "[con_id={}] mark --add {}; [con_id={}] focus; split v; layout stacking; resize set width 25; [con_id={}] focus parent; mark --add {}; [con_id={}] focus",
-                      main.id, main_mark, stack.id, stack.id, stack_mark, main.id
+                        "[con_id={}] mark --add {}; [con_id={}] focus; {}; resize set width {}; [con_id={}] focus parent; mark --add {}; [con_id={}] focus",
+                      main.id, main_mark, stack.id, layout, (100 - self.size), stack.id, stack_mark, main.id
                     )
                 } else {
                     format!(
@@ -126,8 +138,8 @@ impl StackMain {
                 } else {
                     log::debug!("count is more than 1...");
                     format!(
-                      "[con_id={}] focus; move right; resize set width 75; [con_id={}] mark --add {}",
-                      stack_visible.id, stack_visible.id, main_mark
+                        "[con_id={}] focus; move right; resize set width {}; [con_id={}] mark --add {}",
+                      stack_visible.id, self.size, stack_visible.id, main_mark
                     )
                 };
                 log::debug!("close_window: {}", cmd);
