@@ -1,10 +1,14 @@
-use crate::node_ext::{NodeExt, RefinedNodeType};
-use anyhow::{anyhow, Context, Result};
+use crate::node_ext::NodeExt;
+use anyhow::{Context, Result};
 use async_std::task;
 use std::{future::Future, time::Duration};
 use swayipc_async::{Connection, Node, Workspace};
 
-const PERSWAY_TMP_WORKSPACE: &str = "◕‿◕";
+pub const PERSWAY_TMP_WORKSPACE: &str = "◕‿◕";
+pub const MAIN_PREFIX: &str = "_main_";
+pub const STACK_PREFIX: &str = "_stack_";
+//const WS_PREFIX: &str = "_ws_";
+//const CON_PREFIX: &str = "_con_";
 
 pub async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
@@ -42,11 +46,11 @@ pub fn get_socket_path(socket_path: Option<String>) -> String {
 }
 
 pub fn get_main_mark(ws_id: i64) -> String {
-    format!("_main_{}", ws_id)
+    format!("{}{}", MAIN_PREFIX, ws_id)
 }
 
 pub fn get_stack_mark(ws_id: i64) -> String {
-    format!("_stack_{}", ws_id)
+    format!("{}{}", STACK_PREFIX, ws_id)
 }
 
 //pub async fn get_workspace<'a>(ws_num: i32) -> Result<Node> {
@@ -74,19 +78,14 @@ where
     let output = tree
         .iter()
         .find(|n| {
-            matches!(n.get_refined_node_type(), RefinedNodeType::Output)
-                && n.iter().any(|n| {
-                    matches!(n.get_refined_node_type(), RefinedNodeType::Workspace)
-                        && n.num.unwrap() == ws_num
-                })
+            n.is_output()
+                && n.iter()
+                    .any(|n| n.is_workspace() && n.num.unwrap() == ws_num)
         })
         .context("no output found")?;
     let ws = output
         .iter()
-        .find(|n| {
-            matches!(n.get_refined_node_type(), RefinedNodeType::Workspace)
-                && n.num.unwrap() == ws_num
-        })
+        .find(|n| n.is_workspace() && n.num.unwrap() == ws_num)
         .context("no workspace found")?;
     //let output_visible_workspace = workspaces
     //    .iter()
@@ -98,10 +97,7 @@ where
         .context("no focused workspace")?;
     let mut windows: Vec<Node> = Vec::with_capacity(50);
     let mut cmd = String::from("");
-    for window in ws
-        .iter()
-        .filter(|n| matches!(n.get_refined_node_type(), RefinedNodeType::Window))
-    {
+    for window in ws.iter().filter(|n| n.is_window()) {
         windows.push(window.clone());
         cmd.push_str(&format!(
             "[con_id={}] move to workspace {}; ",
@@ -111,6 +107,14 @@ where
     cmd.push_str(&format!(
         "workspace {}; move workspace to output {}; ",
         PERSWAY_TMP_WORKSPACE, output.id
+    ));
+    log::debug!("relayout before layout closure: {}", cmd);
+    connection.run_command(cmd).await?;
+    task::sleep(Duration::from_millis(25)).await;
+    let mut cmd = String::from("");
+    cmd.push_str(&format!(
+        "workspace {}; move workspace to output {}; ",
+        ws_num, output.id
     ));
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;

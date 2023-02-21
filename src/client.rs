@@ -1,7 +1,7 @@
 use std::net::Shutdown;
 use std::str;
 
-use crate::{layout::WorkspaceLayout, utils};
+use crate::utils;
 use anyhow::Result;
 use async_std::prelude::*;
 use async_std::{io::ReadExt, os::unix::net::UnixStream};

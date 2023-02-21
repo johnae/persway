@@ -1,5 +1,3 @@
-use env_logger::fmt::Formatter;
-
 use crate::layout::WorkspaceLayout;
 
 #[derive(clap::Parser, Debug)]

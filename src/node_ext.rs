@@ -2,11 +2,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use swayipc_async::{Connection, Node, NodeLayout, NodeType, Workspace};
 
-pub const WS_PREFIX: &str = "ws_";
-pub const CON_PREFIX: &str = "con_";
-pub const MASTER_PREFIX: &str = "master_";
-pub const STACK_PREFIX: &str = "stack_";
-
 pub enum RefinedNodeType {
     Root,
     Output,
@@ -52,6 +47,7 @@ pub trait NodeExt {
 
     async fn get_workspace(&self) -> Result<Workspace>;
     fn get_refined_node_type(&self) -> RefinedNodeType;
+    async fn get_parent(&self) -> Result<Node>;
     fn iter(&self) -> LinearNodeIterator;
     fn is_root(&self) -> bool;
     fn is_output(&self) -> bool;
@@ -62,9 +58,9 @@ pub trait NodeExt {
     fn is_floating_window(&self) -> bool;
     //fn get_app_name(&self) -> &str;
     //fn is_floating(&self) -> bool;
-    //fn is_full_screen(&self) -> bool;
-    //fn is_stacked(&self) -> bool;
-    //fn is_tabbed(&self) -> bool;
+    fn is_full_screen(&self) -> bool;
+    async fn is_stacked(&self) -> Result<bool>;
+    async fn is_tabbed(&self) -> Result<bool>;
 }
 
 #[async_trait]
@@ -107,10 +103,7 @@ impl NodeExt for Node {
         let tree = connection.get_tree().await?;
         let workspaces = connection.get_workspaces().await?;
         let wsnode = tree
-            .find(|n| {
-                matches!(n.get_refined_node_type(), RefinedNodeType::Workspace)
-                    && n.iter().any(|n| n.id == self.id)
-            })
+            .find(|n| n.is_workspace() && n.iter().any(|n| n.id == self.id))
             .ok_or(anyhow!(format!(
                 "no workspace found for node with id {}",
                 self.id
@@ -123,6 +116,13 @@ impl NodeExt for Node {
                 wsnode.id
             )))
             .cloned()
+    }
+
+    async fn get_parent(&self) -> Result<Node> {
+        let mut connection = Connection::new().await?;
+        let tree = connection.get_tree().await?;
+        tree.find(|n| n.nodes.iter().any(|n| n.id == self.id))
+            .ok_or_else(|| anyhow!(format!("couldn't find parent of node id: {}", self.id)))
     }
 
     fn is_root(&self) -> bool {
@@ -151,6 +151,20 @@ impl NodeExt for Node {
             self.get_refined_node_type(),
             RefinedNodeType::FloatingWindow
         )
+    }
+
+    fn is_full_screen(&self) -> bool {
+        self.percent.unwrap_or(1.0) > 1.0
+    }
+
+    async fn is_stacked(&self) -> Result<bool> {
+        let parent = self.get_parent().await?;
+        Ok(parent.layout == NodeLayout::Stacked)
+    }
+
+    async fn is_tabbed(&self) -> Result<bool> {
+        let parent = self.get_parent().await?;
+        Ok(parent.layout == NodeLayout::Tabbed)
     }
 
     fn get_refined_node_type(&self) -> RefinedNodeType {
