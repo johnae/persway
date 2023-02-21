@@ -1,4 +1,4 @@
-use super::controller::Controller;
+use super::message_handler::MessageHandler;
 use crate::commands::PerswayCommand;
 use crate::Args;
 use crate::{commands::DaemonArgs, utils};
@@ -25,7 +25,7 @@ pub enum Message {
 pub struct Daemon {
     on_exit: Option<String>,
     socket_path: String,
-    controller: Controller,
+    message_handler: MessageHandler,
 }
 
 impl Daemon {
@@ -42,7 +42,7 @@ impl Daemon {
             } => Daemon {
                 socket_path,
                 on_exit,
-                controller: Controller::new(
+                message_handler: MessageHandler::new(
                     default_layout,
                     workspace_renaming,
                     on_window_focus,
@@ -116,12 +116,12 @@ impl Daemon {
                     match message {
                         Message::WindowEvent(event) => {
                           log::debug!("select: handling message window event");
-                          self.controller.handle_event(event).await?;
+                          self.message_handler.handle_event(event).await?;
                           log::debug!("select: handled message window event");
                         },
                         Message::CommandEvent(command) => {
                           log::debug!("select: handling message command event");
-                          self.controller.handle_command(command).await?;
+                          self.message_handler.handle_command(command).await?;
                           log::debug!("select: handled message command event");
                         }
                     };

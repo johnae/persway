@@ -15,12 +15,6 @@ pub async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     ws.find(|w| w.focused).context("no focused workspace")
 }
 
-pub async fn get_workspace(conn: &mut Connection, ws_num: i32) -> Result<Workspace> {
-    let mut ws = conn.get_workspaces().await?.into_iter();
-    ws.find(|w| w.num == ws_num)
-        .context(format!("no workspace with number {}", ws_num))
-}
-
 pub fn get_socket_path(socket_path: Option<String>) -> String {
     let xdg_runtime_dir = std::env::var("XDG_RUNTIME_DIR");
     let wayland_display = std::env::var("WAYLAND_DISPLAY");
@@ -53,20 +47,6 @@ pub fn get_stack_mark(ws_id: i64) -> String {
     format!("{}{}", STACK_PREFIX, ws_id)
 }
 
-//pub async fn get_workspace<'a>(ws_num: i32) -> Result<Node> {
-//    let mut connection = Connection::new().await?;
-//    let tree = &connection.get_tree().await?;
-//    let ws = tree
-//        .iter()
-//        .find(|n| {
-//            matches!(n.get_refined_node_type(), RefinedNodeType::Workspace)
-//                && n.num.unwrap() == ws_num
-//        })
-//        .context("no workspace found")?;
-//    let cws = ws.clone();
-//    Ok(cws)
-//}
-
 pub async fn relayout_workspace<F, C>(ws_num: i32, f: C) -> Result<()>
 where
     F: Future<Output = Result<()>>,
@@ -87,10 +67,6 @@ where
         .iter()
         .find(|n| n.is_workspace() && n.num.unwrap() == ws_num)
         .context("no workspace found")?;
-    //let output_visible_workspace = workspaces
-    //    .iter()
-    //    .find(|w| w.visible)
-    //    .context(format!("no visible workspace on output: {}", output.id))?;
     let focused_workspace = workspaces
         .iter()
         .find(|w| w.focused)
@@ -119,12 +95,6 @@ where
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;
     task::sleep(Duration::from_millis(25)).await;
-    //let cmd = format!(
-    //    "workspace number {}; move workspace to output {}; ",
-    //    &focused_workspace.num, output.id
-    //);
-    //log::debug!("relayout after layout closure: {}", cmd);
-    //connection.run_command(cmd).await?;
     let closure_conn = Connection::new().await?;
     f(closure_conn, ws_num, ws.id, output.id, windows).await?;
     task::sleep(Duration::from_millis(25)).await;

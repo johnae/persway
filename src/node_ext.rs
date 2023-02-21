@@ -42,9 +42,6 @@ impl<'a> Iterator for LinearNodeIterator<'a> {
 
 #[async_trait]
 pub trait NodeExt {
-    //fn get_workspace_num_from_mark(&self) -> Result<i32>;
-    //async fn get_current_workspace_num(&self) -> Result<i32>;
-
     async fn get_workspace(&self) -> Result<Workspace>;
     fn get_refined_node_type(&self) -> RefinedNodeType;
     async fn get_parent(&self) -> Result<Node>;
@@ -56,8 +53,6 @@ pub trait NodeExt {
     fn is_floating_container(&self) -> bool;
     fn is_window(&self) -> bool;
     fn is_floating_window(&self) -> bool;
-    //fn get_app_name(&self) -> &str;
-    //fn is_floating(&self) -> bool;
     fn is_full_screen(&self) -> bool;
     async fn is_stacked(&self) -> Result<bool>;
     async fn is_tabbed(&self) -> Result<bool>;
@@ -68,35 +63,6 @@ impl NodeExt for Node {
     fn iter(&self) -> LinearNodeIterator {
         LinearNodeIterator::new(self)
     }
-
-    //    fn get_workspace_num_from_mark(&self) -> Result<i32> {
-    //        let mark = self
-    //            .marks
-    //            .iter()
-    //            .filter(|m| m.starts_with(WS_PREFIX))
-    //            .next()
-    //            .context("finding ws mark on node")?;
-    //        Ok(mark
-    //            .split("+")
-    //            .next()
-    //            .expect("parsing out ws mark part")
-    //            .split("_")
-    //            .last()
-    //            .expect("parsing ws mark")
-    //            .parse()
-    //            .context("parse ws mark to number")?)
-    //    }
-
-    //async fn get_current_workspace_num(&self) -> Result<i32> {
-    //    let mut connection = Connection::new().await?;
-    //    let tree = connection.get_tree().await?;
-    //    if let Some(wstree) = tree.find_as_ref(|n| {
-    //        n.node_type == NodeType::Workspace && n.find_as_ref(|n| n.id == self.id).is_some()
-    //    }) {
-    //        return Ok(wstree.num.unwrap());
-    //    }
-    //    Err(anyhow!("can't find the current node workspace"))
-    //}
 
     async fn get_workspace(&self) -> Result<Workspace> {
         let mut connection = Connection::new().await?;

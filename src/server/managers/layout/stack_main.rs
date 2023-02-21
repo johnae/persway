@@ -14,6 +14,12 @@ pub struct StackMain {
 }
 
 impl StackMain {
+    pub async fn handle(event: Box<WindowEvent>) {
+        if let Ok(mut manager) = Self::new().await {
+            manager.handle(event).await;
+        }
+    }
+
     pub async fn new() -> Result<Self> {
         let connection = Connection::new().await?;
         Ok(Self { connection })
