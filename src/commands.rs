@@ -4,12 +4,12 @@ use crate::layout::WorkspaceLayout;
 pub struct DaemonArgs {
     /// Which layout should be the default when no other layout has been specified for
     /// a workspace.
-    #[arg(long, default_value = "manual")]
+    #[arg(long, short = 'd', default_value = "manual")]
     pub default_layout: WorkspaceLayout,
 
     /// Enable automatic workspace renaming based on what is running
     /// in the workspace (eg. application name).
-    #[arg(long)]
+    #[arg(long, short = 'w')]
     pub workspace_renaming: bool,
 
     /// Called when window comes into focus. To automatically set the opacity of
@@ -21,7 +21,7 @@ pub struct DaemonArgs {
     /// Or if you want to skip some applications - in this case firefox - you would do something like:
     ///
     /// [tiling] opacity 0.8; [app_id="firefox"] opacity 1; opacity 1
-    #[arg(long)]
+    #[arg(long, short = 'f')]
     pub on_window_focus: Option<String>,
 
     /// Called when window leaves focus. To automatically mark these for example, you would set
@@ -32,7 +32,7 @@ pub struct DaemonArgs {
     /// and then in your sway config:
     ///
     /// bindsym Mod1+tab [con_mark=_prev] focus
-    #[arg(long)]
+    #[arg(long, short = 'l')]
     pub on_window_focus_leave: Option<String>,
 
     /// Called when persway exits. This can be used to reset any opacity changes
@@ -42,18 +42,23 @@ pub struct DaemonArgs {
     /// [tiling] opacity 1
     ///
     /// Eg. set all tiling windows to opacity 1
-    #[arg(long)]
+    #[arg(long, short = 'e')]
     pub on_exit: Option<String>,
 }
 
 #[derive(clap::Parser, Debug)]
 pub enum PerswayCommand {
+    /// This starts the persway daemon
     Daemon(DaemonArgs),
+    /// In the stack main layout - this focuses the next stacked window
     StackFocusNext,
+    /// In the stack main layout - this focuses the previous stacked window
     StackFocusPrev,
+    /// In the stack main layout - this swaps the visible stacked window with the main window
     StackSwapVisible,
+    /// In the stack main layout - this pops the top of the stack which becomes the main window while rotating the previous main window into the bottom of the stack
     StackMainRotateNext,
-    StackMainRotatePrev,
+    /// This changes the layout of the focused workspace
     ChangeLayout {
         /// Change the layout of the focused workspace, can be any of:
         /// manual, spiral, stack_main

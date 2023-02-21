@@ -152,12 +152,6 @@ impl MessageHandler {
                     ctrl.stack_main_rotate_next().await?
                 }
             }
-            PerswayCommand::StackMainRotatePrev => {
-                if current_ws_config.layout == WorkspaceLayout::StackMain {
-                    //let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;
-                    //ctrl.stack_main_rotate_next().await
-                }
-            }
             PerswayCommand::StackSwapVisible => {
                 if current_ws_config.layout == WorkspaceLayout::StackMain {
                     let mut ctrl = controllers::layout::stack_main::StackMain::new().await?;

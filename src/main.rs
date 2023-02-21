@@ -15,7 +15,7 @@ struct Args {
     command: commands::PerswayCommand,
     /// Path to control socket.
     /// Defaults to <XDG_RUNTIME_DIR>/persway-<WAYLAND_DISPLAY>.sock
-    #[arg(long)]
+    #[arg(long, short = 's')]
     socket_path: Option<String>,
 }
 
@@ -37,61 +37,5 @@ async fn main() -> Result<()> {
             .await?
         }
     }
-    //let mut conn = Connection::new().await?;
-    //let tree = conn.get_tree().await?;
-    ////let windows: Vec<&Node> = tree
-    ////    .iter()
-    ////    .filter(|n| matches!(n.get_refined_node_type(), node_ext::RefinedNodeType::Window))
-    ////    .collect();
-    ////let workspaces: Vec<&Node> = tree
-    ////    .iter()
-    ////    .filter(|n| {
-    ////        matches!(
-    ////            n.get_refined_node_type(),
-    ////            node_ext::RefinedNodeType::Workspace
-    ////        )
-    ////    })
-    ////    .collect();
-    ////let outputs: Vec<&Node> = tree
-    ////    .iter()
-    ////    .filter(|n| matches!(n.get_refined_node_type(), node_ext::RefinedNodeType::Output))
-    ////    .collect();
-    ////println!("windows: {:?}", windows);
-    ////println!("workspaces: {:?}", workspaces);
-    ////println!("outputs: {:?}", outputs);
-
-    //utils::relayout_workspace(
-    //    2,
-    //    |mut conn, ws_num, ws_id, output_id, windows| async move {
-    //        let master_mark = format!("_master_{}", ws_id);
-    //        let main_window = windows.iter().find(|n| n.marks.contains(&master_mark));
-    //        for window in windows.iter().rev() {
-    //            if let Some(main_window) = main_window {
-    //                if window.id == main_window.id {
-    //                    continue;
-    //                }
-    //            }
-    //            let cmd = format!(
-    //                "[con_id={}] move to workspace number {}; ",
-    //                window.id, ws_num
-    //            );
-    //            debug!("relayout closure cmd: {}", cmd);
-    //            conn.run_command(cmd).await?;
-    //            task::sleep(Duration::from_millis(25)).await;
-    //        }
-    //        if let Some(main_window) = main_window {
-    //            let cmd = format!(
-    //                "[con_id={}] move to workspace number {}; ",
-    //                main_window.id, ws_num
-    //            );
-    //            debug!("relayout closure cmd: {}", cmd);
-    //            conn.run_command(cmd).await?;
-    //        } else {
-    //            debug!("no main window found via mark: {}", master_mark);
-    //        }
-    //        Ok(())
-    //    },
-    //)
-    //.await?;
     Ok(())
 }
