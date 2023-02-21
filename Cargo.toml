@@ -12,7 +12,6 @@ keywords = ["sway", "swaywm", "swayipc", "ipc", "async"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-nix = "0.26"
 log = "0.4"
 env_logger = "0.10"
 swayipc-async = "2.0.1"
@@ -21,5 +20,5 @@ async-std = { version = "1.12", features = ["attributes"]}
 signal-hook-async-std = "0.2"
 signal-hook = "0.3"
 anyhow = "1"
-async-trait = "0.1.59"
+async-trait = "0.1"
 futures = "0.3"
