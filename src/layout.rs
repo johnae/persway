@@ -33,7 +33,7 @@ impl Display for WorkspaceLayout {
     }
 }
 
-const SIZE_RANGE: RangeInclusive<usize> = 30..=80;
+const SIZE_RANGE: RangeInclusive<usize> = 10..=90;
 
 fn size_in_range(s: &str) -> Result<u8, String> {
     let size: usize = s.parse().map_err(|_| format!("{s} is not a valid size"))?;
