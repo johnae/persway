@@ -48,7 +48,7 @@ pub struct DaemonArgs {
 
 #[derive(clap::Parser, Debug)]
 pub enum PerswayCommand {
-    /// This starts the persway daemon
+    /// Starts the persway daemon
     Daemon(DaemonArgs),
     /// Applies to stack main layout - focuses the next stacked window
     StackFocusNext,

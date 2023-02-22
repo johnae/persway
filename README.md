@@ -1,14 +1,25 @@
 ## Persway - a simple sway ipc daemon
 
-This is a small daemon that listens to sway events over an ipc socket. It will set the workspace name dynamically to the name of the focused application if `workspace-renaming` is enabled.
-If `Autolayout` is enabled (see command line options below), it will also alternate between horizontal / vertical splits, sort of like AwesomeWM.
+Persway works with the Sway Compositor, persuades it to do little evil things. It features window focus handlers that can be used to adjust the opacity of focused and non-focused windows among many other things. Persway currently supports two layouts: `spiral` and `stack_main`. The first alternates between horizontal and vertical splits based on window geometry - this usually results in something that looks like a spiral, this layout is the same as what persway previously just called `autolayout`. The latter, i.e `stack_main`, keeps a stack of windows on the side of a larger main area (this layout is sometimes referred to as master stack).
+Persway comes with several commands to control the `stack_main` layout as you move around in it. Persway talks to itself through a socket and listens to sway events through the sway socket making it a flexible tool for manipulating the [Sway Compositor](https://github.com/swaywm/sway).
 
-THE meat of persway are the on-window-focus and on-exit handlers which can be used to set the opacity of focused and non-focused windows for example (see below examples.)
+In persway version 0.6.0 the cli interface was changed in a backwards incompatible way. However, the change is minor, all the options and arguments from previous versions are now instead available underneath the `daemon` subcommand. So the migration path is simply:
 
-There is one breaking change in 0.6.0 which is that cli flags and options that earlier were given to persway directly, now go under the `daemon` subcommand. This is because persway has gained the ability to talk to itself :-). That is - in version 0.6.0 persway can talk to itself through a socket. This in turn is because persway now supports two layouts: `spiral` and `stack_main` (sometimes referred to as master stack). Especially `stack_main` becomes especially useful when it's easy to move around in the stack. `spiral` is basically what was called `autolayout` in earlier versions of persway.
+If your previous pre-0.6.0 setup looked like this:
+```
+persway -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' -l 'mark --add _prev' --autolayout 
+```
+
+The same setup on 0.6.0 and up should instead look like this:
+
+```
+persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' -l 'mark --add _prev' --default-layout spiral
+```
+
+This change was made because persway, as noted above, has gained the ability to talk to itself. That is - in version 0.6.0, persway can talk to itself through a socket to do various things.
 
 
-Main cli interface:
+This is the main cli interface:
 
 ```
 I am Persway. A friendly daemon.
@@ -19,13 +30,13 @@ Usage: persway [OPTIONS] <COMMAND>
 
 Commands:
   daemon
-          This starts the persway daemon
+          Starts the persway daemon
   stack-focus-next
           Applies to stack main layout - focuses the next stacked window
   stack-focus-prev
           Applies to stack main layout - focuses the previous stacked window
-  stack-swap-visible
-          Applies to stack main layout - swaps the visible stacked window with the main window
+  stack-swap-main
+          Applies to stack main layout - swaps the current stacked window with the main window
   stack-main-rotate-next
           Applies to stack main layout - pops the top of the stack into main while pushing the old main window to the bottom of the stack
   change-layout
@@ -47,7 +58,7 @@ Options:
 The daemon cli interface:
 
 ```
-This starts the persway daemon
+Starts the persway daemon
 
 Usage: persway daemon [OPTIONS]
 
@@ -111,17 +122,17 @@ The `change-layout` `stack-main` subcommand takes a few options:
 ```
 The stack_main autotiling layout keeps a stack of windows on the side of a larger main area, this layout comes with a few commands to control it as well
 
-Usage: persway change-layout stack-main --size <SIZE> --stack-layout <STACK_LAYOUT>
+Usage: persway change-layout stack-main [OPTIONS]
 
 Options:
-  -s, --size <SIZE>                  Size of the main area in percent
-  -l, --stack-layout <STACK_LAYOUT>  The sway layout of the stack: tabbed, tiled or stacked. Stacked is the default
+  -s, --size <SIZE>                  Size of the main area in percent [default: 70]
+  -l, --stack-layout <STACK_LAYOUT>  The sway layout of the stack: tabbed, tiled or stacked [default: stacked]
   -h, --help                         Print help
+
 ```
 
 
-There may be other subcommands that take options as well. Go explore.
-
+There are other subcommands. Go explore.
 
 If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784 - the gist of it is that it is likely a sway config issue.
 
