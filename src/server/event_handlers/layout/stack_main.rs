@@ -73,10 +73,17 @@ impl StackMain {
                       main.id, main_mark, stack.id, layout, (100 - self.size), stack.id, stack_mark, main.id
                     )
                 } else {
-                    format!(
-                        "[con_id={}] mark --add {}; [con_id={}] mark --add {}",
-                        stack.id, stack_mark, main.id, main_mark
-                    )
+                    if let Some(node) = stack.find_as_ref(|n| n.id == event.container.id) {
+                        format!(
+                            "[con_id={}] mark --add {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] mark --add {}; [con_id={}] focus",
+                            stack.id, stack_mark, main.id, node.id, node.id, main_mark, node.id
+                        )
+                    } else {
+                        format!(
+                            "[con_id={}] mark --add {}; [con_id={}] mark --add {}",
+                            stack.id, stack_mark, main.id, main_mark
+                        )
+                    }
                 };
 
                 self.connection.run_command(cmd).await?;
@@ -126,20 +133,25 @@ impl StackMain {
                 .filter(|n| n.id != event.container.id)
                 .next()
             {
-                let stack_visible = stack
-                    .find_as_ref(|n| n.visible.unwrap_or(false))
-                    .expect("no visible stack node");
+                let stack_current = stack
+                    .find_as_ref(|n| n.is_window() && n.focused)
+                    .unwrap_or_else(|| {
+                        stack
+                            .find_as_ref(|n| n.visible.unwrap_or(false))
+                            .expect("stack should have a visible node")
+                    });
+
                 let cmd = if wstree.iter().filter(|n| n.is_window()).count() == 1 {
-                    log::debug!("count is 1..., stack_visible: {:?}", stack_visible);
+                    log::debug!("count is 1..., stack_current: {:?}", stack_current.id);
                     format!(
                         "[con_id={}] focus; layout splith; move up; [con_id={}] mark --add {}",
-                        stack_visible.id, stack_visible.id, main_mark
+                        stack_current.id, stack_current.id, main_mark
                     )
                 } else {
                     log::debug!("count is more than 1...");
                     format!(
                         "[con_id={}] focus; move right; resize set width {}; [con_id={}] mark --add {}",
-                      stack_visible.id, self.size, stack_visible.id, main_mark
+                      stack_current.id, self.size, stack_current.id, main_mark
                     )
                 };
                 log::debug!("close_window: {}", cmd);

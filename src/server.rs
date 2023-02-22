@@ -1,4 +1,4 @@
-mod controllers;
+mod command_handlers;
 pub mod daemon;
-mod managers;
+mod event_handlers;
 mod message_handler;

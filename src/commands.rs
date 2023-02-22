@@ -54,8 +54,8 @@ pub enum PerswayCommand {
     StackFocusNext,
     /// Applies to stack main layout - focuses the previous stacked window
     StackFocusPrev,
-    /// Applies to stack main layout - swaps the visible stacked window with the main window
-    StackSwapVisible,
+    /// Applies to stack main layout - swaps the current stacked window with the main window
+    StackSwapMain,
     /// Applies to stack main layout - pops the top of the stack into main while pushing the old main window to the bottom of the stack
     StackMainRotateNext,
     /// Changes the layout of the focused workspace

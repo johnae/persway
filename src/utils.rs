@@ -7,7 +7,8 @@ use swayipc_async::{Connection, Node, Workspace};
 pub const PERSWAY_TMP_WORKSPACE: &str = "◕‿◕";
 pub const MAIN_PREFIX: &str = "_main_";
 pub const STACK_PREFIX: &str = "_stack_";
-//const WS_PREFIX: &str = "_ws_";
+//pub const CURRENT_PREFIX: &str = "_stack_current_";
+//pub const WS_PREFIX: &str = "_ws_";
 //const CON_PREFIX: &str = "_con_";
 
 pub async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {

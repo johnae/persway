@@ -3,6 +3,7 @@ use crate::{
     utils::{get_focused_workspace, get_main_mark, get_stack_mark},
 };
 use anyhow::Result;
+use either::Either;
 use swayipc_async::Connection;
 
 pub struct StackMain {
@@ -15,60 +16,68 @@ impl StackMain {
         Ok(Self { connection })
     }
 
-    pub async fn stack_focus_prev(&mut self) -> Result<()> {
+    async fn stack_focus_advance(&mut self, reverse: bool) -> Result<()> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
         let stack_mark = get_stack_mark(ws.id);
-        let main_mark = get_main_mark(ws.id);
 
         if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
             if stack.nodes.len() == 0 {
                 return Ok(());
             }
-            let stack_visible = stack
-                .find_as_ref(|n| n.is_window() && n.visible.unwrap_or(false))
-                .expect("stack contains no visible node");
-            let mut prev_was_visible = false;
-            for node in stack.nodes.iter().rev().cycle() {
-                if prev_was_visible {
-                    let cmd = format!("[con_id={}] focus; [con_mark={}] focus", node.id, main_mark);
+
+            let focused = stack.find_as_ref(|n| n.is_window() && n.focused);
+            let visible = stack
+                .iter()
+                .filter(|n| n.is_window() && n.visible.unwrap_or(false));
+            let initial = if reverse {
+                stack.nodes.first()
+            } else {
+                stack.nodes.last()
+            };
+
+            let stack_current = if let Some(focused) = focused {
+                focused
+            } else if visible.count() == 1 {
+                stack.find_as_ref(|n| n.visible.unwrap_or(false)).unwrap()
+            } else {
+                initial.unwrap()
+            };
+
+            //let stack_current = stack
+            //    .find_as_ref(|n| n.is_window() && n.focused)
+            //    .unwrap_or_else(|| {
+            //        stack
+            //            .find_as_ref(|n| n.is_window() && n.visible.unwrap_or(false))
+            //            .expect("stack should have a visible node")
+            //    });
+
+            let mut prev_was_focused = false;
+            let stack_iter = match reverse {
+                true => Either::Left(stack.nodes.iter().rev()),
+                false => Either::Right(stack.nodes.iter()),
+            };
+
+            for node in stack_iter.cycle() {
+                if prev_was_focused {
+                    let cmd = format!("[con_id={}] focus;", node.id);
                     log::debug!("stack main controller, stack focus prev: {}", cmd);
                     self.connection.run_command(cmd).await?;
                     return Ok(());
                 }
-                prev_was_visible = node.id == stack_visible.id
+                prev_was_focused = node.id == stack_current.id
             }
         }
         Ok(())
     }
 
-    pub async fn stack_focus_next(&mut self) -> Result<()> {
-        let tree = self.connection.get_tree().await?;
-        let ws = get_focused_workspace(&mut self.connection).await?;
-        let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = get_stack_mark(ws.id);
-        let main_mark = get_main_mark(ws.id);
+    pub async fn stack_focus_prev(&mut self) -> Result<()> {
+        self.stack_focus_advance(true).await
+    }
 
-        if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
-            if stack.nodes.len() == 0 {
-                return Ok(());
-            }
-            let stack_visible = stack
-                .find_as_ref(|n| n.is_window() && n.visible.unwrap_or(false))
-                .expect("stack contains no visible node");
-            let mut prev_was_visible = false;
-            for node in stack.nodes.iter().cycle() {
-                if prev_was_visible {
-                    let cmd = format!("[con_id={}] focus; [con_mark={}] focus", node.id, main_mark);
-                    log::debug!("stack main controller, stack focus next: {}", cmd);
-                    self.connection.run_command(cmd).await?;
-                    return Ok(());
-                }
-                prev_was_visible = node.id == stack_visible.id
-            }
-        }
-        Ok(())
+    pub async fn stack_focus_next(&mut self) -> Result<()> {
+        self.stack_focus_advance(false).await
     }
 
     pub async fn stack_main_rotate_next(&mut self) -> Result<()> {
@@ -133,7 +142,7 @@ impl StackMain {
         Ok(())
     }
 
-    pub async fn swap_visible(&mut self) -> Result<()> {
+    pub async fn stack_swap_main(&mut self) -> Result<()> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
@@ -146,12 +155,24 @@ impl StackMain {
             }
 
             let main = wstree.nodes.last().expect("main window not found");
-            let stack_visible = stack
-                .find_as_ref(|n| n.is_window() && n.visible.unwrap_or(false))
-                .expect("stack contains no visible node");
+
+            let focused = stack.find_as_ref(|n| n.is_window() && n.focused);
+            let visible = stack
+                .iter()
+                .filter(|n| n.is_window() && n.visible.unwrap_or(false));
+            let initial = stack.nodes.first();
+
+            let stack_current = if let Some(focused) = focused {
+                focused
+            } else if visible.count() == 1 {
+                stack.find_as_ref(|n| n.visible.unwrap_or(false)).unwrap()
+            } else {
+                initial.unwrap()
+            };
+
             let cmd = format!(
                 "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
-                main.id, stack_visible.id, stack_visible.id, main_mark, main_mark, stack_visible.id, main_mark
+                main.id, stack_current.id, stack_current.id, main_mark, main_mark, stack_current.id, main_mark
             );
             log::debug!("stack main controller, swap visible: {}", cmd);
             self.connection.run_command(cmd).await?;
