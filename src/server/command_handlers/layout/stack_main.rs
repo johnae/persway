@@ -45,14 +45,6 @@ impl StackMain {
                 initial.unwrap()
             };
 
-            //let stack_current = stack
-            //    .find_as_ref(|n| n.is_window() && n.focused)
-            //    .unwrap_or_else(|| {
-            //        stack
-            //            .find_as_ref(|n| n.is_window() && n.visible.unwrap_or(false))
-            //            .expect("stack should have a visible node")
-            //    });
-
             let mut prev_was_focused = false;
             let stack_iter = match reverse {
                 true => Either::Left(stack.nodes.iter().rev()),
