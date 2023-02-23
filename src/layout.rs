@@ -90,6 +90,6 @@ pub enum WorkspaceLayout {
         #[arg(long, short = 'l', default_value_t = StackLayout::Stacked)]
         stack_layout: StackLayout,
     },
-    /// The normal sway dynamic tiling
+    /// The standard sway manual tiling
     Manual,
 }
