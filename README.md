@@ -18,11 +18,10 @@ persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' 
 
 This change was made because persway, as noted above, has gained the ability to talk to itself. That is - in version 0.6.0, persway can talk to itself through a socket to do various things.
 
-
 This is the main cli interface:
 
 ```
-I am Persway. A friendly daemon.
+I am Persway. An evil, scheming, friendly daemon.
 
 I talk to the Sway Compositor and persuade it to do little evil things. Give me an option and see what it brings. I also talk to myself.
 
