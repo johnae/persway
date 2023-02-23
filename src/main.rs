@@ -10,7 +10,7 @@ mod utils;
 
 #[derive(Parser, Debug)]
 #[clap(about, version, author)]
-/// I am Persway. A friendly daemon.
+/// I am Persway. An evil, scheming, friendly daemon.
 ///
 /// I talk to the Sway Compositor and persuade it to do little evil things.
 /// Give me an option and see what it brings. I also talk to myself.
