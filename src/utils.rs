@@ -5,11 +5,6 @@ use std::{future::Future, time::Duration};
 use swayipc_async::{Connection, Node, Workspace};
 
 pub const PERSWAY_TMP_WORKSPACE: &str = "◕‿◕";
-pub const MAIN_PREFIX: &str = "_main_";
-pub const STACK_PREFIX: &str = "_stack_";
-//pub const CURRENT_PREFIX: &str = "_stack_current_";
-//pub const WS_PREFIX: &str = "_ws_";
-//const CON_PREFIX: &str = "_con_";
 
 pub async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
@@ -38,14 +33,6 @@ pub fn get_socket_path(socket_path: Option<String>) -> String {
             }
         )
     })
-}
-
-pub fn get_main_mark(ws_id: i64) -> String {
-    format!("{}{}", MAIN_PREFIX, ws_id)
-}
-
-pub fn get_stack_mark(ws_id: i64) -> String {
-    format!("{}{}", STACK_PREFIX, ws_id)
 }
 
 pub async fn relayout_workspace<F, C>(ws_num: i32, f: C) -> Result<()>

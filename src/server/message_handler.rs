@@ -7,11 +7,7 @@ use swayipc_async::{Connection, WindowEvent};
 use super::command_handlers;
 use super::event_handlers;
 
-use crate::{
-    commands::PerswayCommand,
-    layout::WorkspaceLayout,
-    utils::{self, get_main_mark},
-};
+use crate::{commands::PerswayCommand, layout::WorkspaceLayout, utils};
 
 #[derive(Debug)]
 pub struct WorkspaceConfig {
@@ -101,15 +97,8 @@ impl MessageHandler {
                     log::debug!("start relayout of ws {}", ws.num);
                     task::spawn(utils::relayout_workspace(
                         ws.num,
-                        |mut conn, ws_num, old_ws_id, _output_id, windows| async move {
-                            let main_mark = get_main_mark(old_ws_id);
-                            let main_window = windows.iter().find(|n| n.marks.contains(&main_mark));
+                        |mut conn, ws_num, _old_ws_id, _output_id, windows| async move {
                             for window in windows.iter().rev() {
-                                if let Some(main_window) = main_window {
-                                    if window.id == main_window.id {
-                                        continue;
-                                    }
-                                }
                                 let cmd = format!(
                                     "[con_id={}] move to workspace number {}; [con_id={}] focus",
                                     window.id, ws_num, window.id
@@ -117,16 +106,6 @@ impl MessageHandler {
                                 log::debug!("relayout closure cmd: {}", cmd);
                                 conn.run_command(cmd).await?;
                                 task::sleep(Duration::from_millis(25)).await;
-                            }
-                            if let Some(main_window) = main_window {
-                                let cmd = format!(
-                                    "[con_id={}] move to workspace number {}; [con_id={}] focus",
-                                    main_window.id, ws_num, main_window.id
-                                );
-                                log::debug!("relayout closure cmd: {}", cmd);
-                                conn.run_command(cmd).await?;
-                            } else {
-                                log::debug!("no main window found via mark: {}", main_mark);
                             }
                             Ok(())
                         },
