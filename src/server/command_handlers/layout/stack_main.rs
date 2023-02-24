@@ -1,7 +1,4 @@
-use crate::{
-    node_ext::NodeExt,
-    utils::{get_focused_workspace, get_main_mark, get_stack_mark},
-};
+use crate::{node_ext::NodeExt, utils::get_focused_workspace};
 use anyhow::Result;
 use either::Either;
 use swayipc_async::Connection;
@@ -20,9 +17,8 @@ impl StackMain {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = get_stack_mark(ws.id);
 
-        if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
+        if let Some(stack) = wstree.nodes.first() {
             if stack.nodes.len() == 0 {
                 return Ok(());
             }
@@ -76,14 +72,13 @@ impl StackMain {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = get_stack_mark(ws.id);
-        let main_mark = get_main_mark(ws.id);
 
-        if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
+        if let Some(stack) = wstree.nodes.first() {
             if stack.nodes.len() == 0 {
                 return Ok(());
             }
 
+            let main = wstree.nodes.last().expect("main window not found");
             let stack_leaves = stack.iter().filter(|n| n.is_window());
 
             let mut stack_leaves_next = stack_leaves.clone();
@@ -101,9 +96,9 @@ impl StackMain {
                 }
             }
             cmd.push_str(&format!(
-                "[con_id={}] focus; [con_mark={}] focus; ",
+                "[con_id={}] focus; [con_id={}] focus; ",
                 stack.nodes.last().unwrap().id,
-                main_mark
+                main.id
             ));
             log::debug!("stack main controller, master cycle next 1: {}", cmd);
             self.connection.run_command(cmd).await?;
@@ -123,9 +118,8 @@ impl StackMain {
                 .unwrap();
 
             let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
+                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
                 main.id, stack_first, stack_first,
-                main_mark, main_mark, stack_first, main_mark
             );
             log::debug!("stack main controller, master cycle next 2: {}", cmd);
             self.connection.run_command(cmd).await?;
@@ -138,10 +132,8 @@ impl StackMain {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let stack_mark = get_stack_mark(ws.id);
-        let main_mark = get_main_mark(ws.id);
 
-        if let Some(stack) = wstree.find_as_ref(|n| n.marks.contains(&stack_mark)) {
+        if let Some(stack) = wstree.nodes.first() {
             if stack.nodes.len() == 0 {
                 return Ok(());
             }
@@ -163,8 +155,8 @@ impl StackMain {
             };
 
             let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus; [con_mark={}] unmark {}; [con_id={}] mark --add {}",
-                main.id, stack_current.id, stack_current.id, main_mark, main_mark, stack_current.id, main_mark
+                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                main.id, stack_current.id, stack_current.id
             );
             log::debug!("stack main controller, swap visible: {}", cmd);
             self.connection.run_command(cmd).await?;

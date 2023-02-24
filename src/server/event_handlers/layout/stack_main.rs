@@ -1,7 +1,7 @@
 use crate::{
     layout::StackLayout,
     node_ext::NodeExt,
-    utils::{self, get_focused_workspace, get_main_mark, get_stack_mark},
+    utils::{self, get_focused_workspace},
 };
 
 use anyhow::Result;
@@ -43,9 +43,8 @@ impl StackMain {
             return Ok(());
         }
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        log::debug!("new_window: {:?}", event.container.id);
-        log::debug!("nodes_len: {}", wstree.nodes.len());
-        log::debug!("wstree: {:?}", wstree);
+        log::debug!("new_window id: {}", event.container.id);
+        log::debug!("workspace nodes len: {}", wstree.nodes.len());
         let layout = match self.stack_layout {
             StackLayout::Tabbed => "split v; layout tabbed",
             StackLayout::Stacked => "split v; layout stacking",
@@ -53,36 +52,30 @@ impl StackMain {
         };
         match wstree.nodes.len() {
             1 => {
-                let main_mark = get_main_mark(ws.id);
-                let cmd = format!(
-                    "[con_mark={}] unmark {}; [con_id={}] focus; split h; [con_id={}] mark --add {}",
-                    main_mark, main_mark, event.container.id, event.container.id, main_mark
-                );
+                let cmd = format!("[con_id={}] focus; split h", event.container.id);
                 self.connection.run_command(cmd).await?;
                 Ok(())
             }
             2 => {
-                let stack_mark = get_stack_mark(ws.id);
-                let main_mark = get_main_mark(ws.id);
                 let main = wstree.nodes.last().expect("main window not found");
                 let stack = wstree.nodes.first().expect("stack container not found");
 
                 let cmd = if stack.is_window() {
                     format!(
-                        "[con_id={}] mark --add {}; [con_id={}] focus; {}; resize set width {}; [con_id={}] focus parent; mark --add {}; [con_id={}] focus",
-                      main.id, main_mark, stack.id, layout, (100 - self.size), stack.id, stack_mark, main.id
+                        "[con_id={}] focus; {}; resize set width {}; [con_id={}] focus",
+                        stack.id,
+                        layout,
+                        (100 - self.size),
+                        main.id
                     )
                 } else {
                     if let Some(node) = stack.find_as_ref(|n| n.id == event.container.id) {
                         format!(
-                            "[con_id={}] mark --add {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] mark --add {}; [con_id={}] focus",
-                            stack.id, stack_mark, main.id, node.id, node.id, main_mark, node.id
+                            "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                            main.id, node.id, node.id
                         )
                     } else {
-                        format!(
-                            "[con_id={}] mark --add {}; [con_id={}] mark --add {}",
-                            stack.id, stack_mark, main.id, main_mark
-                        )
+                        String::from("nop event container not in stack")
                     }
                 };
 
@@ -97,14 +90,13 @@ impl StackMain {
                     .find(|n| n.is_window() && n.id != event.container.id)
                     .expect("main window not found");
                 let stack = wstree.nodes.first().expect("stack container not found");
-
-                let stack_mark = get_stack_mark(ws.id);
-                let main_mark = get_main_mark(ws.id);
+                let stack_mark = format!("_stack_{}", stack.id);
 
                 let cmd = format!(
-                          "[con_mark={}] unmark {}; [con_mark={}] unmark {}; [con_id={}] mark --add {}; [con_id={}] mark --add {}; [con_id={}] focus; move container to mark {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                          stack_mark, stack_mark, main_mark, main_mark, stack.id, stack_mark, event.container.id, main_mark,
+                    "[con_id={}] mark --add {}; [con_id={}] focus; move container to mark {}; [con_mark={}] unmark {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                          stack.id, stack_mark,
                           event.container.id, stack_mark,
+                          stack_mark, stack_mark,
                           main.id, event.container.id, event.container.id
                 );
 
@@ -124,9 +116,8 @@ impl StackMain {
             return Ok(());
         }
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        let main_mark = get_main_mark(ws.id);
 
-        if event.container.marks.contains(&main_mark) {
+        if wstree.nodes.len() == 1 {
             if let Some(stack) = wstree
                 .nodes
                 .iter()
@@ -142,16 +133,19 @@ impl StackMain {
                     });
 
                 let cmd = if wstree.iter().filter(|n| n.is_window()).count() == 1 {
-                    log::debug!("count is 1..., stack_current: {:?}", stack_current.id);
+                    log::debug!("on_close_window, count 1, stack_id: {}", stack_current.id);
                     format!(
-                        "[con_id={}] focus; layout splith; move up; [con_id={}] mark --add {}",
-                        stack_current.id, stack_current.id, main_mark
+                        "[con_id={}] focus; layout splith; move up",
+                        stack_current.id
                     )
                 } else {
-                    log::debug!("count is more than 1...");
+                    log::debug!(
+                        "on_close_window, count more than 1, stack_id: {}",
+                        stack_current.id
+                    );
                     format!(
-                        "[con_id={}] focus; move right; resize set width {}; [con_id={}] mark --add {}",
-                      stack_current.id, self.size, stack_current.id, main_mark
+                        "[con_id={}] focus; move right; resize set width {}",
+                        stack_current.id, self.size
                     )
                 };
                 log::debug!("close_window: {}", cmd);
