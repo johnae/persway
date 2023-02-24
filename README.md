@@ -109,7 +109,7 @@ Usage: persway change-layout <COMMAND>
 Commands:
   spiral      The spiral autotiling layout tiles windows in a spiral formation, similar to AwesomeWM
   stack-main  The stack_main autotiling layout keeps a stack of windows on the side of a larger main area, this layout comes with a few commands to control it as well
-  manual      The normal sway dynamic tiling
+  manual      The normal sway manual tiling
   help        Print this message or the help of the given subcommand(s)
 
 Options:
