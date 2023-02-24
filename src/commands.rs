@@ -1,4 +1,4 @@
-use crate::layout::WorkspaceLayout;
+use crate::layout::{StackLayout, WorkspaceLayout, STACK_MAIN_DEFAULT_SIZE};
 
 #[derive(clap::Parser, Debug)]
 pub struct DaemonArgs {
@@ -6,6 +6,15 @@ pub struct DaemonArgs {
     /// a workspace. Options are: manual, spiral and stack_main.
     #[arg(long, short = 'd', default_value = "manual")]
     pub default_layout: WorkspaceLayout,
+
+    /// This controls the default size of the main area in the stack_main layout.
+    #[arg(long, short = 's', default_value_t = STACK_MAIN_DEFAULT_SIZE)]
+    pub stack_main_default_size: u8,
+
+    /// This controls the default sway layout of the stack area in the stack_main layout.
+    /// Any of: tabbed, tiled or stacked
+    #[arg(long, short = 'k', default_value_t = StackLayout::Stacked)]
+    pub stack_main_default_stack_layout: StackLayout,
 
     /// Enable automatic workspace renaming based on what is running
     /// in the workspace (eg. application name).

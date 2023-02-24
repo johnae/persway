@@ -5,6 +5,8 @@ use std::{
     str::FromStr,
 };
 
+pub const STACK_MAIN_DEFAULT_SIZE: u8 = 70;
+
 impl FromStr for WorkspaceLayout {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self> {
@@ -12,7 +14,7 @@ impl FromStr for WorkspaceLayout {
             "spiral" => Ok(Self::Spiral),
             "stack_main" => Ok(Self::StackMain {
                 stack_layout: StackLayout::Stacked,
-                size: 70,
+                size: STACK_MAIN_DEFAULT_SIZE,
             }),
             "manual" => Ok(Self::Manual),
             s => Err(anyhow!("I don't know about the layout '{}'", s)),
@@ -84,7 +86,7 @@ pub enum WorkspaceLayout {
     /// The stack_main autotiling layout keeps a stack of windows on the side of a larger main area, this layout comes with a few commands to control it as well
     StackMain {
         /// Size of the main area in percent
-        #[arg(long, short = 's', value_parser = size_in_range, default_value_t = 70)]
+        #[arg(long, short = 's', value_parser = size_in_range, default_value_t = STACK_MAIN_DEFAULT_SIZE)]
         size: u8,
         /// The sway layout of the stack: tabbed, tiled or stacked.
         #[arg(long, short = 'l', default_value_t = StackLayout::Stacked)]
