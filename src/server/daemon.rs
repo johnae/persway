@@ -1,5 +1,6 @@
 use super::message_handler::MessageHandler;
 use crate::commands::PerswayCommand;
+use crate::layout::WorkspaceLayout;
 use crate::Args;
 use crate::{commands::DaemonArgs, utils};
 use anyhow::{anyhow, Result};
@@ -34,21 +35,32 @@ impl Daemon {
         match args {
             DaemonArgs {
                 default_layout,
+                stack_main_default_size,
+                stack_main_default_stack_layout,
                 workspace_renaming,
                 on_window_focus,
                 on_window_focus_leave,
                 on_exit,
                 ..
-            } => Daemon {
-                socket_path,
-                on_exit,
-                message_handler: MessageHandler::new(
-                    default_layout,
-                    workspace_renaming,
-                    on_window_focus,
-                    on_window_focus_leave,
-                ),
-            },
+            } => {
+                let default_layout = match default_layout {
+                    WorkspaceLayout::StackMain { .. } => WorkspaceLayout::StackMain {
+                        size: stack_main_default_size,
+                        stack_layout: stack_main_default_stack_layout,
+                    },
+                    _ => default_layout,
+                };
+                Daemon {
+                    socket_path,
+                    on_exit,
+                    message_handler: MessageHandler::new(
+                        default_layout,
+                        workspace_renaming,
+                        on_window_focus,
+                        on_window_focus_leave,
+                    ),
+                }
+            }
         }
     }
 
