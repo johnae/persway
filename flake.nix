@@ -31,7 +31,7 @@
       import nixpkgs {
         inherit system;
         overlays = [
-          devshell.overlay
+          devshell.overlays.default
           fenix.overlays.default
         ];
       };
