@@ -1,3 +1,7 @@
+
+
+https://user-images.githubusercontent.com/28332/223278211-ba3943ee-becc-45e5-ae0e-4f1a121a6f17.mp4
+
 ## Persway - the scheming, evil sway ipc daemon
 
 Persway works with the Sway Compositor, it persuades it to do little evil things. It features window focus handlers that can be used to adjust the opacity of focused and non-focused windows among many other things. Persway currently supports two layouts: `spiral` and `stack_main`. The first alternates between horizontal and vertical splits based on window geometry - this usually results in something that looks like a spiral, this layout is the same as what persway previously just called `autolayout`. The latter, i.e `stack_main`, keeps a stack of windows on the side of a larger main area (this layout is sometimes referred to as master stack).
