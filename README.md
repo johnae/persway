@@ -22,6 +22,34 @@ persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' 
 
 This change was made because persway, as noted above, has gained the ability to talk to itself. That is - in version 0.6.0, persway can talk to itself through a socket to do various things.
 
+
+### Configure and setup Persway
+
+To set up Persway, you need to run the daemon using the `persway daemon` subcommand with the appropriate options. Once the daemon is running, you can use the client portion of Persway to communicate with the daemon. For example by binding keys to layout movement and switching.
+
+In essence, to set up Persway, follow these steps:
+
+Run the daemon using the appropriate options. Here's an example:
+
+```
+persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' -l 'mark --add _prev' -d stack_main
+```
+
+Then bind keys to layout movement and switching. For example, you could use the following sway bindings:
+
+```
+bindsym Mod4+Control+space exec persway stack-main-rotate-next
+bindsym Mod4+Shift+Tab exec persway stack-focus-prev
+bindsym Mod4+Tab exec persway stack-focus-next
+bindsym Mod4+c exec persway change-layout stack-main --size 70 --stack-layout tiled
+bindsym Mod4+space exec persway stack-swap-main
+bindsym Mod4+v exec persway change-layout manual
+bindsym Mod4+x exec persway change-layout stack-main --size 70
+bindsym Mod4+z exec persway change-layout spiral
+```
+
+### The cli
+
 This is the main cli interface:
 
 ```
@@ -133,30 +161,6 @@ Options:
   -h, --help                         Print help
 
 ```
-
-
-### Integrating with sway
-
-First, the persway daemon needs to be running for anything useful to happen. In my case, I run it like this:
-
-```
-persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' -l 'mark --add _prev' -d stack_main
-```
-
-Then, you'll likely want to bind some keys to layout movement and switching. For example, in my case I have these bindings:
-
-```
-bindsym Mod4+Control+space exec persway stack-main-rotate-next
-bindsym Mod4+Shift+Tab exec persway stack-focus-prev
-bindsym Mod4+Tab exec persway stack-focus-next
-bindsym Mod4+c exec persway change-layout stack-main --size 70 --stack-layout tiled
-bindsym Mod4+space exec persway stack-swap-main
-bindsym Mod4+v exec persway change-layout manual
-bindsym Mod4+x exec persway change-layout stack-main --size 70
-bindsym Mod4+z exec persway change-layout spiral
-```
-
-Those bindings use the client portion of persway to communicate with the daemon.
 
 There are other subcommands as well. Go explore. I'll try to do a better job documenting things in the future.
 
