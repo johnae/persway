@@ -135,7 +135,30 @@ Options:
 ```
 
 
-There are other subcommands. Go explore.
+### Integrating with sway
+
+First, the persway daemon needs to be running for anything useful to happen. In my case, I run it like this:
+
+```
+persway daemon -w -e '[tiling] opacity 1' -f '[tiling] opacity 0.95; opacity 1' -l 'mark --add _prev' -d stack_main
+```
+
+Then, you'll likely want to bind some keys to layout movement and switching. For example, in my case I have these bindings:
+
+```
+bindsym Mod4+Control+space exec persway stack-main-rotate-next
+bindsym Mod4+Shift+Tab exec persway stack-focus-prev
+bindsym Mod4+Tab exec persway stack-focus-next
+bindsym Mod4+c exec persway change-layout stack-main --size 70 --stack-layout tiled
+bindsym Mod4+space exec persway stack-swap-main
+bindsym Mod4+v exec persway change-layout manual
+bindsym Mod4+x exec persway change-layout stack-main --size 70
+bindsym Mod4+z exec persway change-layout spiral
+```
+
+Those bindings use the client portion of persway to communicate with the daemon.
+
+There are other subcommands as well. Go explore. I'll try to do a better job documenting things in the future.
 
 If you have trouble with workspace naming/numbering and switching workspaces, please see this issue comment: https://github.com/johnae/persway/issues/2#issuecomment-644343784 - the gist of it is that it is likely a sway config issue.
 
