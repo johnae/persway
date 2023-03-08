@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.6.2]
+### Changes
+- Fix forgotten Cargo.lock update, nothing more
+
 ## [0.6.1]
 ### Changes
 - The default layout which can be set when starting daemon is now accompanied by two settings specific to the `stack_main` layout:
