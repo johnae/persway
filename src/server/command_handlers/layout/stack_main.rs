@@ -49,7 +49,7 @@ impl StackMain {
 
             for node in stack_iter.cycle() {
                 if prev_was_focused {
-                    let cmd = format!("[con_id={}] focus;", node.id);
+                    let cmd = format!("[con_id={node_id}] focus;", node_id = node.id);
                     log::debug!("stack main controller, stack focus prev: {}", cmd);
                     self.connection.run_command(cmd).await?;
                     return Ok(());
@@ -88,17 +88,18 @@ impl StackMain {
             for node in stack_leaves {
                 if let Some(next) = stack_leaves_next.next() {
                     cmd.push_str(&format!(
-                        "[con_id={}] focus; swap container with con_id {}; ",
-                        node.id, next.id
+                        "[con_id={node_id}] focus; swap container with con_id {next_id}; ",
+                        node_id = node.id,
+                        next_id = next.id
                     ));
                 } else {
                     break;
                 }
             }
             cmd.push_str(&format!(
-                "[con_id={}] focus; [con_id={}] focus; ",
-                stack.nodes.last().unwrap().id,
-                main.id
+                "[con_id={last_stack_id}] focus; [con_id={main_id}] focus; ",
+                last_stack_id = stack.nodes.last().unwrap().id,
+                main_id = main.id
             ));
             log::debug!("stack main controller, master cycle next 1: {}", cmd);
             self.connection.run_command(cmd).await?;
@@ -118,8 +119,8 @@ impl StackMain {
                 .unwrap();
 
             let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                main.id, stack_first, stack_first,
+                "[con_id={main_id}] focus; swap container with con_id {stack_first}; [con_id={stack_first}] focus",
+                main_id = main.id
             );
             log::debug!("stack main controller, master cycle next 2: {}", cmd);
             self.connection.run_command(cmd).await?;
@@ -155,8 +156,9 @@ impl StackMain {
             };
 
             let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                main.id, stack_current.id, stack_current.id
+                "[con_id={main_id}] focus; swap container with con_id {stack_current_id}; [con_id={stack_current_id}] focus",
+                main_id = main.id,
+                stack_current_id = stack_current.id
             );
             log::debug!("stack main controller, swap visible: {}", cmd);
             self.connection.run_command(cmd).await?;

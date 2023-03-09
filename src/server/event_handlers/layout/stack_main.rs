@@ -34,16 +34,14 @@ impl StackMain {
 
     async fn on_new_window(&mut self, event: &WindowEvent) -> Result<()> {
         let tree = self.connection.get_tree().await?;
-        let node = tree
-            .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
-        let ws = node.get_workspace().await?;
+        let new_node = &event.container;
+        let ws = new_node.get_workspace().await?;
         if ws.name == utils::PERSWAY_TMP_WORKSPACE {
             log::debug!("skip stack_main layout of tmp workspace");
             return Ok(());
         }
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
-        log::debug!("new_window id: {}", event.container.id);
+        log::debug!("new window id: {}", new_node.id);
         log::debug!("workspace nodes len: {}", wstree.nodes.len());
         let layout = match self.stack_layout {
             StackLayout::Tabbed => "split v; layout tabbed",
@@ -52,7 +50,10 @@ impl StackMain {
         };
         match wstree.nodes.len() {
             1 => {
-                let cmd = format!("[con_id={}] focus; split h", event.container.id);
+                let cmd = format!(
+                    "[con_id={new_node_id}] focus; split h",
+                    new_node_id = new_node.id
+                );
                 self.connection.run_command(cmd).await?;
                 Ok(())
             }
@@ -62,20 +63,20 @@ impl StackMain {
 
                 let cmd = if stack.is_window() {
                     format!(
-                        "[con_id={}] focus; {}; resize set width {}; [con_id={}] focus",
-                        stack.id,
-                        layout,
-                        (100 - self.size),
-                        main.id
+                        "[con_id={stack_id}] focus; {layout}; [con_id={main_id}] focus; resize set width {main_width};",
+                        stack_id = stack.id,
+                        main_id = main.id,
+                        main_width = self.size,
                     )
                 } else {
-                    if let Some(node) = stack.find_as_ref(|n| n.id == event.container.id) {
+                    if stack.find_as_ref(|n| n.id == new_node.id).is_some() {
                         format!(
-                            "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                            main.id, node.id, node.id
+                            "[con_id={main_id}] focus; swap container with con_id {new_node_id}; [con_id={new_node_id}] focus",
+                            main_id = main.id,
+                            new_node_id = new_node.id
                         )
                     } else {
-                        String::from("nop event container not in stack")
+                        String::from("nop new node not in stack")
                     }
                 };
 
@@ -87,17 +88,16 @@ impl StackMain {
                     .nodes
                     .iter()
                     .skip(1)
-                    .find(|n| n.is_window() && n.id != event.container.id)
+                    .find(|n| n.is_window() && n.id != new_node.id)
                     .expect("main window not found");
                 let stack = wstree.nodes.first().expect("stack container not found");
                 let stack_mark = format!("_stack_{}", stack.id);
 
                 let cmd = format!(
-                    "[con_id={}] mark --add {}; [con_id={}] focus; move container to mark {}; [con_mark={}] unmark {}; [con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                          stack.id, stack_mark,
-                          event.container.id, stack_mark,
-                          stack_mark, stack_mark,
-                          main.id, event.container.id, event.container.id
+                    "[con_id={stack_id}] mark --add {stack_mark}; [con_id={new_node_id}] focus; move container to mark {stack_mark}; [con_mark={stack_mark}] unmark {stack_mark}; [con_id={main_id}] focus; swap container with con_id {new_node_id}; [con_id={new_node_id}] focus",
+                    stack_id = stack.id,
+                    main_id = main.id,
+                    new_node_id = new_node.id
                 );
 
                 log::debug!("new_window: {}", cmd);
@@ -110,6 +110,7 @@ impl StackMain {
     }
     async fn on_close_window(&mut self, event: &WindowEvent) -> Result<()> {
         let tree = self.connection.get_tree().await?;
+        let closed_node = &event.container;
         let ws = get_focused_workspace(&mut self.connection).await?;
         if ws.name == utils::PERSWAY_TMP_WORKSPACE {
             log::debug!("skip stack_main layout of tmp workspace");
@@ -121,7 +122,7 @@ impl StackMain {
             if let Some(stack) = wstree
                 .nodes
                 .iter()
-                .filter(|n| n.id != event.container.id)
+                .filter(|n| n.id != closed_node.id)
                 .next()
             {
                 let stack_current = stack
@@ -135,8 +136,8 @@ impl StackMain {
                 let cmd = if wstree.iter().filter(|n| n.is_window()).count() == 1 {
                     log::debug!("on_close_window, count 1, stack_id: {}", stack_current.id);
                     format!(
-                        "[con_id={}] focus; layout splith; move up",
-                        stack_current.id
+                        "[con_id={stack_focused_id}] focus; layout splith; move up",
+                        stack_focused_id = stack_current.id
                     )
                 } else {
                     log::debug!(
@@ -144,8 +145,9 @@ impl StackMain {
                         stack_current.id
                     );
                     format!(
-                        "[con_id={}] focus; move right; resize set width {}",
-                        stack_current.id, self.size
+                        "[con_id={stack_current_id}] focus; move right; resize set width {main_width}",
+                        stack_current_id = stack_current.id,
+                        main_width = self.size
                     )
                 };
                 log::debug!("close_window: {}", cmd);
@@ -155,11 +157,8 @@ impl StackMain {
         Ok(())
     }
     async fn on_move_window(&mut self, event: &WindowEvent) -> Result<()> {
-        let tree = self.connection.get_tree().await?;
-        let node = tree
-            .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
-        let ws = node.get_workspace().await?;
+        let moved_node = &event.container;
+        let ws = moved_node.get_workspace().await?;
         if ws.name == utils::PERSWAY_TMP_WORKSPACE {
             log::debug!("skip stack_main layout of tmp workspace");
             return Ok(());

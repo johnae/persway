@@ -67,7 +67,7 @@ impl WorkspaceRenamer {
             .next()
             .unwrap_or(&focused_ws.name);
         if let Some(app_name) = get_app_name(&event) {
-            let cmd = format!("rename workspace to {}: {}", ws_num, app_name);
+            let cmd = format!("rename workspace to {ws_num}: {app_name}");
             log::debug!("workspace name manager, cmd: {}", cmd);
             self.connection.run_command(cmd).await?;
         } else {

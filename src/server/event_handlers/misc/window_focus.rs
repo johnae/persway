@@ -46,7 +46,7 @@ impl WindowFocus {
         if let Some(window_focus_leave_cmd) = &self.window_focus_leave_cmd {
             if let Some(id) = self.previously_focused_id {
                 self.connection
-                    .run_command(format!("[con_id={id}] {}", window_focus_leave_cmd))
+                    .run_command(format!("[con_id={id}] {window_focus_leave_cmd}"))
                     .await?;
             }
         }

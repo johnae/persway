@@ -64,21 +64,21 @@ where
     for window in ws.iter().filter(|n| n.is_window()) {
         windows.push(window.clone());
         cmd.push_str(&format!(
-            "[con_id={}] move to workspace {}; ",
-            window.id, PERSWAY_TMP_WORKSPACE
+            "[con_id={window_id}] move to workspace {PERSWAY_TMP_WORKSPACE}; ",
+            window_id = window.id
         ));
     }
     cmd.push_str(&format!(
-        "workspace {}; move workspace to output {}; ",
-        PERSWAY_TMP_WORKSPACE, output.id
+        "workspace {PERSWAY_TMP_WORKSPACE}; move workspace to output {output_id}; ",
+        output_id = output.id
     ));
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;
     task::sleep(Duration::from_millis(25)).await;
     let mut cmd = String::from("");
     cmd.push_str(&format!(
-        "workspace {}; move workspace to output {}; ",
-        ws_num, output.id
+        "workspace {ws_num}; move workspace to output {output_id}; ",
+        output_id = output.id
     ));
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;
@@ -93,8 +93,9 @@ where
         .context("no focused workspace")?;
     if &focused_workspace_after_closure.num != &focused_workspace.num {
         let cmd = format!(
-            "workspace number {}; move workspace to output {}; ",
-            &focused_workspace.num, output.id
+            "workspace number {focused_ws_num}; move workspace to output {output_id}; ",
+            focused_ws_num = &focused_workspace.num,
+            output_id = output.id
         );
         log::debug!("relayout after layout closure: {}", cmd);
         connection.run_command(cmd).await?;

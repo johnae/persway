@@ -21,27 +21,30 @@ impl Spiral {
         Ok(Self { connection })
     }
 
-    async fn layout(&mut self, event: WindowEvent) -> Result<()> {
+    async fn on_window_focus(&mut self, event: WindowEvent) -> Result<()> {
         log::debug!("spiral manager handling event: {:?}", event.change);
-        let tree = self.connection.get_tree().await?;
-        let node = tree
-            .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
-        let ws = node.get_workspace().await?;
+        let focused_node = &event.container;
+        let ws = focused_node.get_workspace().await?;
         if ws.name == utils::PERSWAY_TMP_WORKSPACE {
             log::debug!("skip spiral layout of tmp workspace");
             return Ok(());
         }
-        if !(node.is_floating_window()
-            || node.is_floating_container()
-            || node.is_full_screen()
-            || node.is_stacked().await?
-            || node.is_tabbed().await?)
+        if !(focused_node.is_floating_window()
+            || focused_node.is_floating_container()
+            || focused_node.is_full_screen()
+            || focused_node.is_stacked().await?
+            || focused_node.is_tabbed().await?)
         {
-            let cmd = if node.rect.height > node.rect.width {
-                format!("[con_id={}] focus; split v", node.id)
+            let cmd = if focused_node.rect.height > focused_node.rect.width {
+                format!(
+                    "[con_id={focused_node_id}] focus; split v",
+                    focused_node_id = focused_node.id
+                )
             } else {
-                format!("[con_id={}] focus; split h", node.id)
+                format!(
+                    "[con_id={focused_node_id}] focus; split h",
+                    focused_node_id = focused_node.id
+                )
             };
             log::debug!("spiral layout: {}", cmd);
             self.connection.run_command(cmd).await?;
@@ -55,7 +58,7 @@ impl WindowEventHandler for Spiral {
     async fn handle(&mut self, event: Box<WindowEvent>) {
         match event.change {
             WindowChange::Focus => {
-                if let Err(e) = self.layout(*event).await {
+                if let Err(e) = self.on_window_focus(*event).await {
                     log::error!("spiral manager, layout err: {}", e);
                 };
             }

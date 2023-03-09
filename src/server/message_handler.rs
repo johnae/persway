@@ -100,8 +100,8 @@ impl MessageHandler {
                         |mut conn, ws_num, _old_ws_id, _output_id, windows| async move {
                             for window in windows.iter().rev() {
                                 let cmd = format!(
-                                    "[con_id={}] move to workspace number {}; [con_id={}] focus",
-                                    window.id, ws_num, window.id
+                                    "[con_id={window_id}] move to workspace number {ws_num}; [con_id={window_id}] focus",
+                                    window_id = window.id
                                 );
                                 log::debug!("relayout closure cmd: {}", cmd);
                                 conn.run_command(cmd).await?;
