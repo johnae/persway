@@ -105,7 +105,7 @@ impl MessageHandler {
                                 );
                                 log::debug!("relayout closure cmd: {}", cmd);
                                 conn.run_command(cmd).await?;
-                                task::sleep(Duration::from_millis(25)).await;
+                                task::sleep(Duration::from_millis(50)).await;
                             }
                             Ok(())
                         },

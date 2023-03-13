@@ -74,32 +74,31 @@ where
     ));
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;
-    task::sleep(Duration::from_millis(25)).await;
-    let mut cmd = String::from("");
-    cmd.push_str(&format!(
-        "workspace {}; move workspace to output {}; ",
-        ws_num, output.id
-    ));
-    log::debug!("relayout before layout closure: {}", cmd);
-    connection.run_command(cmd).await?;
-    task::sleep(Duration::from_millis(25)).await;
+    task::sleep(Duration::from_millis(50)).await;
     let closure_conn = Connection::new().await?;
     f(closure_conn, ws_num, ws.id, output.id, windows).await?;
-    task::sleep(Duration::from_millis(25)).await;
+    task::sleep(Duration::from_millis(50)).await;
     let workspaces = connection.get_workspaces().await?;
     let focused_workspace_after_closure = workspaces
         .iter()
         .find(|w| w.focused)
         .context("no focused workspace")?;
+    let mut cmd = String::new();
     if &focused_workspace_after_closure.num != &focused_workspace.num {
-        let cmd = format!(
-            "workspace number {}; move workspace to output {}; ",
-            &focused_workspace.num, output.id
-        );
-        log::debug!("relayout after layout closure: {}", cmd);
-        connection.run_command(cmd).await?;
-    } else {
-        log::debug!("skip relayout after layout closure");
+        cmd.push_str(&format!(
+            "workspace number {focused_workspace_num}; move workspace to output {output_id}; ",
+            focused_workspace_num = &focused_workspace.num,
+            output_id = output.id,
+        ));
     }
+    cmd.push_str(&format!(
+        "rename workspace to {ws_name}",
+        ws_name = focused_workspace.name
+    ));
+    log::debug!(
+        "rename new workspace to old name after layout closure: {}",
+        cmd
+    );
+    connection.run_command(cmd).await?;
     Ok(())
 }
