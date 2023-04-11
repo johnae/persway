@@ -64,13 +64,13 @@ where
     for window in ws.iter().filter(|n| n.is_window()) {
         windows.push(window.clone());
         cmd.push_str(&format!(
-            "[con_id={}] move to workspace {}; ",
-            window.id, PERSWAY_TMP_WORKSPACE
+            "[con_id={window_id}] move to workspace {PERSWAY_TMP_WORKSPACE}; ",
+            window_id = window.id
         ));
     }
     cmd.push_str(&format!(
-        "workspace {}; move workspace to output {}; ",
-        PERSWAY_TMP_WORKSPACE, output.id
+        "workspace {PERSWAY_TMP_WORKSPACE}; move workspace to output {output_id}; ",
+        output_id = output.id
     ));
     log::debug!("relayout before layout closure: {}", cmd);
     connection.run_command(cmd).await?;

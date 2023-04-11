@@ -27,7 +27,7 @@ impl Display for WorkspaceLayout {
         let string_layout = match self {
             Self::Spiral => String::from("spiral"),
             Self::StackMain { stack_layout, size } => {
-                format!("stack_main {} {}", stack_layout, size)
+                format!("stack_main {stack_layout} {size}")
             }
             Self::Manual => String::from("manual"),
         };
