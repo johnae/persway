@@ -92,11 +92,19 @@ impl Daemon {
 
         match async_std::fs::remove_file(&self.socket_path).await {
             Ok(()) => log::debug!("Removed stale socket {}", &self.socket_path),
-            Err(e) => log::error!(
-                "Unable to remove stale socket: {}\n{:?}",
-                &self.socket_path,
-                e
-            ),
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::NotFound => log::debug!(
+                    "Couldn't remove stale socket {} as the file didn't exist",
+                    &self.socket_path
+                ),
+                _ => {
+                    log::error!(
+                        "Unable to remove stale socket: {}\n{:?}",
+                        &self.socket_path,
+                        e
+                    )
+                }
+            },
         };
 
         let listener = UnixListener::bind(&self.socket_path).await?;
