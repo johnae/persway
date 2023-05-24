@@ -5,6 +5,7 @@ use std::{future::Future, time::Duration};
 use swayipc_async::{Connection, Node, Workspace};
 
 pub const PERSWAY_TMP_WORKSPACE: &str = "◕‿◕";
+pub const SCRATCHPAD_WORKSPACE: &str = "__i3_scratch";
 
 pub async fn get_focused_workspace(conn: &mut Connection) -> Result<Workspace> {
     let mut ws = conn.get_workspaces().await?.into_iter();
@@ -33,6 +34,14 @@ pub fn get_socket_path(socket_path: Option<String>) -> String {
             }
         )
     })
+}
+
+pub fn is_scratchpad_workspace(ws: &Workspace) -> bool {
+    ws.name == SCRATCHPAD_WORKSPACE
+}
+
+pub fn is_persway_tmp_workspace(ws: &Workspace) -> bool {
+    ws.name == PERSWAY_TMP_WORKSPACE
 }
 
 pub async fn relayout_workspace<F, C>(ws_num: i32, f: C) -> Result<()>

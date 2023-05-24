@@ -1,12 +1,19 @@
 use super::super::traits::WindowEventHandler;
-use crate::{node_ext::NodeExt, utils};
+use crate::{
+    node_ext::NodeExt,
+    utils::{is_persway_tmp_workspace, is_scratchpad_workspace},
+};
 
 use anyhow::Result;
 use async_trait::async_trait;
-use swayipc_async::{Connection, WindowChange, WindowEvent};
+use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 pub struct Spiral {
     connection: Connection,
+}
+
+fn should_skip_layout_of_workspace(workspace: &Workspace) -> bool {
+    is_persway_tmp_workspace(workspace) || is_scratchpad_workspace(workspace)
 }
 
 impl Spiral {
@@ -28,8 +35,8 @@ impl Spiral {
             .find_as_ref(|n| n.id == event.container.id)
             .expect(&format!("no node found with id {}", event.container.id));
         let ws = node.get_workspace().await?;
-        if ws.name == utils::PERSWAY_TMP_WORKSPACE {
-            log::debug!("skip spiral layout of tmp workspace");
+        if should_skip_layout_of_workspace(&ws) {
+            log::debug!("skip spiral layout of \"special\" workspace");
             return Ok(());
         }
         if !(node.is_floating_window()

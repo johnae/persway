@@ -3,10 +3,14 @@ use crate::utils;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use swayipc_async::{Connection, WindowChange, WindowEvent};
+use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 pub struct WorkspaceRenamer {
     connection: Connection,
+}
+
+fn should_skip_rename_of_workspace(workspace: &Workspace) -> bool {
+    utils::is_persway_tmp_workspace(workspace) || utils::is_scratchpad_workspace(workspace)
 }
 
 fn get_app_name(event: &WindowEvent) -> Option<String> {
@@ -56,8 +60,8 @@ impl WorkspaceRenamer {
     async fn rename_workspace(&mut self, event: WindowEvent) -> Result<()> {
         log::debug!("workspace name manager handling event: {:?}", event.change);
         let focused_ws = utils::get_focused_workspace(&mut self.connection).await?;
-        if focused_ws.name == utils::PERSWAY_TMP_WORKSPACE {
-            log::debug!("workspace name manager skip tmp workspace");
+        if should_skip_rename_of_workspace(&focused_ws) {
+            log::debug!("workspace name manager skip renaming workspace");
             return Ok(());
         }
 
