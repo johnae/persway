@@ -1,14 +1,18 @@
 use crate::{
     layout::StackLayout,
     node_ext::NodeExt,
-    utils::{self, get_focused_workspace},
+    utils::{get_focused_workspace, is_persway_tmp_workspace, is_scratchpad_workspace},
 };
 
 use anyhow::Result;
 use async_trait::async_trait;
-use swayipc_async::{Connection, WindowChange, WindowEvent};
+use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 use super::super::traits::WindowEventHandler;
+
+fn should_skip_layout_of_workspace(workspace: &Workspace) -> bool {
+    is_persway_tmp_workspace(workspace) || is_scratchpad_workspace(workspace)
+}
 
 pub struct StackMain {
     connection: Connection,
@@ -38,8 +42,8 @@ impl StackMain {
             .find_as_ref(|n| n.id == event.container.id)
             .expect(&format!("no node found with id {}", event.container.id));
         let ws = node.get_workspace().await?;
-        if ws.name == utils::PERSWAY_TMP_WORKSPACE {
-            log::debug!("skip stack_main layout of tmp workspace");
+        if should_skip_layout_of_workspace(&ws) {
+            log::debug!("skip stack_main layout of \"special\" workspace");
             return Ok(());
         }
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
@@ -111,10 +115,11 @@ impl StackMain {
     async fn on_close_window(&mut self, event: &WindowEvent) -> Result<()> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
-        if ws.name == utils::PERSWAY_TMP_WORKSPACE {
-            log::debug!("skip stack_main layout of tmp workspace");
+        if should_skip_layout_of_workspace(&ws) {
+            log::debug!("skip stack_main layout of \"special\" workspace");
             return Ok(());
         }
+
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
 
         if wstree.nodes.len() == 1 {
@@ -156,14 +161,26 @@ impl StackMain {
     }
     async fn on_move_window(&mut self, event: &WindowEvent) -> Result<()> {
         let tree = self.connection.get_tree().await?;
-        let node = tree
-            .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
-        let ws = node.get_workspace().await?;
-        if ws.name == utils::PERSWAY_TMP_WORKSPACE {
-            log::debug!("skip stack_main layout of tmp workspace");
+
+        let node = if let Some(node) = tree.find_as_ref(|n| n.id == event.container.id) {
+            node
+        } else {
+            log::warn!("no node found with id {}", event.container.id);
+            return Ok(());
+        };
+
+        let ws = if let Ok(ws) = node.get_workspace().await {
+            ws
+        } else {
+            log::warn!("node had no workspace");
+            return self.on_close_window(event).await;
+        };
+
+        if should_skip_layout_of_workspace(&ws) {
+            log::debug!("skip stack_main layout of \"special\" workspace");
             return Ok(());
         }
+
         let focused_ws = get_focused_workspace(&mut self.connection).await?;
 
         if ws.id == focused_ws.id {
