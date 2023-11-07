@@ -16,22 +16,32 @@ impl WindowFocus {
         event: Box<WindowEvent>,
         window_focus_cmd: Option<String>,
         window_focus_leave_cmd: Option<String>,
-    ) {
-        if let Ok(mut manager) = Self::new(window_focus_cmd, window_focus_leave_cmd).await {
+        previously_focused_id: Option<i64>,
+    ) -> Option<i64> {
+        if let Ok(mut manager) = Self::new(
+            window_focus_cmd,
+            window_focus_leave_cmd,
+            previously_focused_id,
+        )
+        .await
+        {
             manager.handle(event).await;
+            return manager.previously_focused_id;
         }
+        None
     }
 
     pub async fn new(
         window_focus_cmd: Option<String>,
         window_focus_leave_cmd: Option<String>,
+        previously_focused_id: Option<i64>,
     ) -> Result<Self> {
         let connection = Connection::new().await?;
         Ok(Self {
             connection,
             window_focus_cmd,
             window_focus_leave_cmd,
-            previously_focused_id: None,
+            previously_focused_id,
         })
     }
 
