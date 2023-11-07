@@ -1,79 +1,26 @@
 {
-  description = "Persway - the friendly IPC daemon";
+  description = "Persway";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    crane.inputs.nixpkgs.follows = "nixpkgs";
+    crane.url = "github:ipetkov/crane";
+    devenv.url = "github:cachix/devenv";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
+    fenix.url = "github:nix-community/fenix";
+    flake-parts.url = "github:hercules-ci/flake-parts";
     flake-utils.url = "github:numtide/flake-utils";
-    dream2nix = {
-      url = "github:nix-community/dream2nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    devshell = {
-      url = "github:numtide/devshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-    fenix = {
-      url = "github:nix-community/fenix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    mk-shell-bin.url = "github:rrbutani/nix-mk-shell-bin";
+    nix2container.inputs.flake-utils.follows = "flake-utils";
+    nix2container.inputs.nixpkgs.follows = "nixpkgs";
+    nix2container.url = "github:nlewo/nix2container";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = {
-    self,
-    dream2nix,
-    flake-utils,
-    devshell,
-    fenix,
-    nixpkgs,
-  }: let
-    l = nixpkgs.lib // builtins;
-    pkgsFor = system:
-      import nixpkgs {
-        inherit system;
-        overlays = [
-          devshell.overlays.default
-          fenix.overlays.default
-        ];
-      };
-
-    initD2N = pkgs:
-      dream2nix.lib.init {
-        inherit pkgs;
-        config.projectRoot = ./.;
-      };
-
-    makeOutputs = pkgs: let
-      outputs = (initD2N pkgs).dream2nix-interface.makeOutputs {
-        source = ./.;
-        settings = [
-          {
-            builder = "crane";
-            translator = "cargo-lock";
-          }
-        ];
-      };
-    in {
-      packages.${pkgs.system} = outputs.packages;
-      checks.${pkgs.system} = {
-        inherit (outputs.packages) spotnix;
-      };
+  outputs = inputs @ {flake-parts, ...}:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      systems = ["x86_64-linux" "x86_64-darwin" "aarch64-linux" "aaarch64-darwin"];
+      imports = [
+        ./flake/configuration.nix
+      ];
     };
-    allOutputs = l.map makeOutputs (map pkgsFor flake-utils.lib.defaultSystems);
-    outputs = l.foldl' l.recursiveUpdate {} allOutputs;
-  in
-    {
-      overlays.default = final: prev: {
-        persway = self.packages.${prev.system}.persway;
-      };
-    }
-    // outputs
-    // (flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = pkgsFor system;
-    in {
-      devShells.default = pkgs.devshell.mkShell {
-        imports = [
-          (pkgs.devshell.importTOML ./devshell.toml)
-        ];
-      };
-    }));
 }
