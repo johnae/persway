@@ -1,9 +1,4 @@
-{
-  inputs,
-  lib,
-  self,
-  ...
-}: {
+{inputs, ...}: {
   imports = [
     ./devenv.nix
     ./packages.nix

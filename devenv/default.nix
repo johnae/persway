@@ -16,7 +16,7 @@
      echo -e "
       {bold}{160}${name}{reset}
 
-      This is a basic rust application flake.
+      Persway - the evil, scheming, ipc daemon
     "
   '';
 }
