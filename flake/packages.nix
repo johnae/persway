@@ -1,9 +1,5 @@
 {inputs, ...}: {
-  perSystem = {
-    system,
-    pkgs,
-    ...
-  }: let
+  perSystem = {pkgs, ...}: let
     craneLib = inputs.crane.mkLib pkgs;
     # craneLib =
     #   inputs.crane.lib.${system}.overrideToolchain
