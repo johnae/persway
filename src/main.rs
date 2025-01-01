@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
             log::debug!("command: {:?}", args.command);
             client::send(
                 args.socket_path,
-                &std::env::args().into_iter().collect::<Vec<_>>().join(" "),
+                &std::env::args().collect::<Vec<_>>().join(" "),
             )
             .await?
         }

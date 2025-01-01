@@ -19,7 +19,7 @@ impl StackMain {
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
 
         if let Some(stack) = wstree.nodes.first() {
-            if stack.nodes.len() == 0 {
+            if stack.nodes.is_empty() {
                 return Ok(());
             }
 
@@ -174,7 +174,7 @@ impl StackMain {
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
 
         if let Some(stack) = wstree.nodes.first() {
-            if stack.nodes.len() == 0 {
+            if stack.nodes.is_empty() {
                 return Ok(());
             }
 
