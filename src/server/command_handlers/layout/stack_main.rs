@@ -68,38 +68,54 @@ impl StackMain {
         self.stack_focus_advance(false).await
     }
 
-    pub async fn stack_main_rotate_next(&mut self) -> Result<()> {
+    pub async fn stack_main_rotate(&mut self, reverse: bool) -> Result<()> {
         let tree = self.connection.get_tree().await?;
         let ws = get_focused_workspace(&mut self.connection).await?;
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
 
         if let Some(stack) = wstree.nodes.first() {
-            if stack.nodes.len() == 0 {
+            if stack.nodes.is_empty() {
                 return Ok(());
             }
 
             let main = wstree.nodes.last().expect("main window not found");
             let stack_leaves = stack.iter().filter(|n| n.is_window());
 
-            let mut stack_leaves_next = stack_leaves.clone();
-            stack_leaves_next.next();
-
             let mut cmd = String::from("");
-            for node in stack_leaves {
-                if let Some(next) = stack_leaves_next.next() {
-                    cmd.push_str(&format!(
-                        "[con_id={}] focus; swap container with con_id {}; ",
-                        node.id, next.id
-                    ));
-                } else {
-                    break;
+
+            if reverse {
+                let stack_leaves: Vec<&swayipc_types::Node> = stack_leaves.collect();
+                let mut iterator = stack_leaves.into_iter().rev().peekable();
+                while let Some(node) = iterator.next() {
+                    if let Some(next) = iterator.peek() {
+                        cmd.push_str(&format!(
+                            "[con_id={}] focus; swap container with con_id {}; ",
+                            node.id, next.id,
+                        ));
+                    }
                 }
+                cmd.push_str(&format!(
+                    "[con_id={}] focus; [con_id={}] focus; ",
+                    stack.nodes.first().unwrap().id,
+                    main.id
+                ));
+            } else {
+                let mut iterator = stack_leaves.peekable();
+                while let Some(node) = iterator.next() {
+                    if let Some(next) = iterator.peek() {
+                        cmd.push_str(&format!(
+                            "[con_id={}] focus; swap container with con_id {}; ",
+                            node.id, next.id,
+                        ));
+                    }
+                }
+                cmd.push_str(&format!(
+                    "[con_id={}] focus; [con_id={}] focus; ",
+                    stack.nodes.last().unwrap().id,
+                    main.id
+                ));
             }
-            cmd.push_str(&format!(
-                "[con_id={}] focus; [con_id={}] focus; ",
-                stack.nodes.last().unwrap().id,
-                main.id
-            ));
+
             log::debug!("stack main controller, master cycle next 1: {}", cmd);
             self.connection.run_command(cmd).await?;
 
@@ -108,24 +124,48 @@ impl StackMain {
             let main = wstree.nodes.last().expect("main window not found");
             let stack = wstree.nodes.first().expect("stack container not found");
 
-            let stack_first = stack
-                .iter()
-                .filter(|n| n.is_window())
-                .map(|n| n.id)
-                .collect::<Vec<_>>()
-                .into_iter()
-                .next()
-                .unwrap();
+            let cmd = if reverse {
+                let stack_last = stack
+                    .iter()
+                    .filter(|n| n.is_window())
+                    .map(|n| n.id)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .last()
+                    .unwrap();
 
-            let cmd = format!(
-                "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                main.id, stack_first, stack_first,
-            );
+                format!(
+                    "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                    main.id, stack_last, stack_last,
+                )
+            } else {
+                let stack_first = stack
+                    .iter()
+                    .filter(|n| n.is_window())
+                    .map(|n| n.id)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .next()
+                    .unwrap();
+
+                format!(
+                    "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                    main.id, stack_first, stack_first,
+                )
+            };
             log::debug!("stack main controller, master cycle next 2: {}", cmd);
             self.connection.run_command(cmd).await?;
             return Ok(());
         }
         Ok(())
+    }
+
+    pub async fn stack_main_rotate_next(&mut self) -> Result<()> {
+        self.stack_main_rotate(false).await
+    }
+
+    pub async fn stack_main_rotate_prev(&mut self) -> Result<()> {
+        self.stack_main_rotate(true).await
     }
 
     pub async fn stack_swap_main(&mut self) -> Result<()> {
