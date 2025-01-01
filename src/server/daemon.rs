@@ -32,57 +32,51 @@ pub struct Daemon {
 impl Daemon {
     pub fn new(args: DaemonArgs, socket_path: Option<String>) -> Daemon {
         let socket_path = utils::get_socket_path(socket_path);
-        match args {
-            DaemonArgs {
-                default_layout,
-                stack_main_default_size,
-                stack_main_default_stack_layout,
-                workspace_renaming,
-                on_window_focus,
-                on_window_focus_leave,
+        let DaemonArgs {
+            default_layout,
+            stack_main_default_size,
+            stack_main_default_stack_layout,
+            workspace_renaming,
+            on_window_focus,
+            on_window_focus_leave,
+            on_exit,
+            ..
+        } = args;
+        {
+            let default_layout = match default_layout {
+                WorkspaceLayout::StackMain { .. } => WorkspaceLayout::StackMain {
+                    size: stack_main_default_size,
+                    stack_layout: stack_main_default_stack_layout,
+                },
+                _ => default_layout,
+            };
+            Daemon {
+                socket_path,
                 on_exit,
-                ..
-            } => {
-                let default_layout = match default_layout {
-                    WorkspaceLayout::StackMain { .. } => WorkspaceLayout::StackMain {
-                        size: stack_main_default_size,
-                        stack_layout: stack_main_default_stack_layout,
-                    },
-                    _ => default_layout,
-                };
-                Daemon {
-                    socket_path,
-                    on_exit,
-                    message_handler: MessageHandler::new(
-                        default_layout,
-                        workspace_renaming,
-                        on_window_focus,
-                        on_window_focus_leave,
-                    ),
-                }
+                message_handler: MessageHandler::new(
+                    default_layout,
+                    workspace_renaming,
+                    on_window_focus,
+                    on_window_focus_leave,
+                ),
             }
         }
     }
 
     async fn handle_signals(signals: Signals, on_exit: Option<String>) {
         let mut signals = signals.fuse();
-        while let Some(signal) = signals.next().await {
-            match signal {
-                SIGHUP | SIGINT | SIGQUIT | SIGTERM => {
-                    let mut commands = Connection::new().await.unwrap();
-                    if let Some(exit_cmd) = on_exit {
-                        log::debug!("{}", exit_cmd);
-                        commands.run_command(exit_cmd).await.unwrap();
-                    }
-                    exit(0)
-                }
-                _ => unreachable!(),
+        if let Some(_signal) = signals.next().await {
+            let mut commands = Connection::new().await.unwrap();
+            if let Some(exit_cmd) = on_exit {
+                log::debug!("{}", exit_cmd);
+                commands.run_command(exit_cmd).await.unwrap();
             }
+            exit(0)
         }
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        let signals = Signals::new(&[SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
+        let signals = Signals::new([SIGHUP, SIGINT, SIGQUIT, SIGTERM])?;
         let _handle = signals.handle();
         let _signals_task =
             async_std::task::spawn(Self::handle_signals(signals, self.on_exit.clone()));

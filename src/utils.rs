@@ -93,7 +93,7 @@ where
         .find(|w| w.focused)
         .context("no focused workspace")?;
     let mut cmd = String::new();
-    if &focused_workspace_after_closure.num != &focused_workspace.num {
+    if focused_workspace_after_closure.num != focused_workspace.num {
         cmd.push_str(&format!(
             "workspace number {focused_workspace_num}; move workspace to output {output_id}; ",
             focused_workspace_num = &focused_workspace.num,

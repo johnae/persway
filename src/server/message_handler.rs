@@ -117,41 +117,36 @@ impl MessageHandler {
                     );
                 }
             }
-            PerswayCommand::StackFocusNext => match current_ws_config.layout {
-                WorkspaceLayout::StackMain { .. } => {
+            PerswayCommand::StackFocusNext => {
+                if let WorkspaceLayout::StackMain { .. } = current_ws_config.layout {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_focus_next().await?
                 }
-                _ => {}
-            },
-            PerswayCommand::StackFocusPrev => match current_ws_config.layout {
-                WorkspaceLayout::StackMain { .. } => {
+            }
+            PerswayCommand::StackFocusPrev => {
+                if let WorkspaceLayout::StackMain { .. } = current_ws_config.layout {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_focus_prev().await?
                 }
-                _ => {}
-            },
-            PerswayCommand::StackMainRotatePrev => match current_ws_config.layout {
-                WorkspaceLayout::StackMain { .. } => {
+            }
+            PerswayCommand::StackMainRotatePrev => {
+                if let WorkspaceLayout::StackMain { .. } = current_ws_config.layout {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_main_rotate_prev().await?
                 }
-                _ => {}
-            },
-            PerswayCommand::StackMainRotateNext => match current_ws_config.layout {
-                WorkspaceLayout::StackMain { .. } => {
+            }
+            PerswayCommand::StackMainRotateNext => {
+                if let WorkspaceLayout::StackMain { .. } = current_ws_config.layout {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_main_rotate_next().await?
                 }
-                _ => {}
-            },
-            PerswayCommand::StackSwapMain => match current_ws_config.layout {
-                WorkspaceLayout::StackMain { .. } => {
+            }
+            PerswayCommand::StackSwapMain => {
+                if let WorkspaceLayout::StackMain { .. } = current_ws_config.layout {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
                     ctrl.stack_swap_main().await?
                 }
-                _ => {}
-            },
+            }
             PerswayCommand::Daemon(_) => unreachable!(),
         }
         Ok(())

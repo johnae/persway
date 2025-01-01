@@ -33,7 +33,7 @@ impl Spiral {
         let tree = self.connection.get_tree().await?;
         let node = tree
             .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
+            .unwrap_or_else(|| panic!("no node found with id {}", event.container.id));
         let ws = node.get_workspace().await?;
         if should_skip_layout_of_workspace(&ws) {
             log::debug!("skip spiral layout of \"special\" workspace");

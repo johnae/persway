@@ -40,7 +40,7 @@ impl StackMain {
         let tree = self.connection.get_tree().await?;
         let node = tree
             .find_as_ref(|n| n.id == event.container.id)
-            .expect(&format!("no node found with id {}", event.container.id));
+            .unwrap_or_else(|| panic!("no node found with id {}", event.container.id));
         let ws = node.get_workspace().await?;
         if should_skip_layout_of_workspace(&ws) {
             log::debug!("skip stack_main layout of \"special\" workspace");
@@ -72,15 +72,13 @@ impl StackMain {
                         (100 - self.size),
                         main.id
                     )
+                } else if let Some(node) = stack.find_as_ref(|n| n.id == event.container.id) {
+                    format!(
+                        "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
+                        main.id, node.id, node.id
+                    )
                 } else {
-                    if let Some(node) = stack.find_as_ref(|n| n.id == event.container.id) {
-                        format!(
-                            "[con_id={}] focus; swap container with con_id {}; [con_id={}] focus",
-                            main.id, node.id, node.id
-                        )
-                    } else {
-                        String::from("nop event container not in stack")
-                    }
+                    String::from("nop event container not in stack")
                 };
 
                 self.connection.run_command(cmd).await?;
@@ -123,12 +121,7 @@ impl StackMain {
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
 
         if wstree.nodes.len() == 1 {
-            if let Some(stack) = wstree
-                .nodes
-                .iter()
-                .filter(|n| n.id != event.container.id)
-                .next()
-            {
+            if let Some(stack) = wstree.nodes.iter().find(|n| n.id != event.container.id) {
                 let stack_current = stack
                     .find_as_ref(|n| n.is_window() && n.focused)
                     .unwrap_or_else(|| {
