@@ -131,6 +131,13 @@ impl MessageHandler {
                 }
                 _ => {}
             },
+            PerswayCommand::StackMainRotatePrev => match current_ws_config.layout {
+                WorkspaceLayout::StackMain { .. } => {
+                    let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;
+                    ctrl.stack_main_rotate_prev().await?
+                }
+                _ => {}
+            },
             PerswayCommand::StackMainRotateNext => match current_ws_config.layout {
                 WorkspaceLayout::StackMain { .. } => {
                     let mut ctrl = command_handlers::layout::stack_main::StackMain::new().await?;

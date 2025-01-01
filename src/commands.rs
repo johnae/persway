@@ -67,6 +67,8 @@ pub enum PerswayCommand {
     StackSwapMain,
     /// Applies to stack main layout - pops the top of the stack into main while pushing the old main window to the bottom of the stack
     StackMainRotateNext,
+    /// Applies to stack main layout - pops the top of the bottom of the stack into main while pushing the old main window to the top of the stack
+    StackMainRotatePrev,
     /// Changes the layout of the focused workspace
     ChangeLayout {
         /// Change the layout of the focused workspace, can be any of:
