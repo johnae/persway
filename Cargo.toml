@@ -14,10 +14,10 @@ keywords = ["sway", "swaywm", "swayipc", "ipc", "async"]
 clap = { version = "4", features = ["derive"] }
 log = "0.4"
 either = "1"
-env_logger = "0.10"
-swayipc-async = "2.0.1"
-swayipc-types = "1.3.0"
-async-std = { version = "1.12", features = ["attributes"]}
+env_logger = "0.11"
+swayipc-async = "2.0.4"
+swayipc-types = "1.4.1"
+async-std = { version = "1.13", features = ["attributes"]}
 signal-hook-async-std = "0.2"
 signal-hook = "0.3"
 anyhow = "1"
