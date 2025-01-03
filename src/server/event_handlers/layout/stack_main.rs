@@ -46,6 +46,12 @@ impl StackMain {
             log::debug!("skip stack_main layout of \"special\" workspace");
             return Ok(());
         }
+
+        if node.is_floating() || node.is_full_screen() {
+            log::debug!("skip stack_main layout of \"floating\" \"fullscreen\" workspace");
+            return Ok(());
+        }
+
         let wstree = tree.find_as_ref(|n| n.id == ws.id).unwrap();
         log::debug!("new_window id: {}", event.container.id);
         log::debug!("workspace nodes len: {}", wstree.nodes.len());
@@ -174,6 +180,11 @@ impl StackMain {
             return Ok(());
         }
 
+        if node.is_floating() || node.is_full_screen() {
+            log::debug!("skip stack_main layout of \"floating\" \"fullscreen\" workspace");
+            return Ok(());
+        }
+
         let focused_ws = get_focused_workspace(&mut self.connection).await?;
 
         if ws.id == focused_ws.id {
@@ -207,6 +218,20 @@ impl WindowEventHandler for StackMain {
                 if let Err(e) = self.on_move_window(&event).await {
                     log::error!("stack_main layout err: {}", e);
                 };
+            }
+            WindowChange::Floating => {
+                log::debug!("stack_main handler handling event: {:?}", event.change);
+                log::debug!(
+                    "stack_main is floating: {:?}",
+                    event.container.is_floating()
+                );
+                if event.container.is_floating() {
+                    if let Err(e) = self.on_close_window(&event).await {
+                        log::error!("stack_main layout err: {}", e);
+                    };
+                } else if let Err(e) = self.on_new_window(&event).await {
+                    log::error!("stack_main layout err: {}", e);
+                }
             }
             _ => {
                 log::debug!("stack_main not handling event: {:?}", event.change);
