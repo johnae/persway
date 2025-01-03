@@ -51,6 +51,7 @@ pub trait NodeExt {
     fn is_workspace(&self) -> bool;
     fn is_container(&self) -> bool;
     fn is_floating_container(&self) -> bool;
+    fn is_floating(&self) -> bool;
     fn is_window(&self) -> bool;
     fn is_floating_window(&self) -> bool;
     fn is_full_screen(&self) -> bool;
@@ -117,6 +118,10 @@ impl NodeExt for Node {
             self.get_refined_node_type(),
             RefinedNodeType::FloatingWindow
         )
+    }
+
+    fn is_floating(&self) -> bool {
+        self.is_floating_container() || self.is_floating_window()
     }
 
     fn is_full_screen(&self) -> bool {
