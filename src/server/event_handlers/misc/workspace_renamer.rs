@@ -2,7 +2,6 @@ use super::super::traits::WindowEventHandler;
 use crate::utils;
 
 use anyhow::Result;
-use async_trait::async_trait;
 use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 pub struct WorkspaceRenamer {
@@ -81,7 +80,7 @@ impl WorkspaceRenamer {
         Ok(())
     }
 }
-#[async_trait]
+
 impl WindowEventHandler for WorkspaceRenamer {
     async fn handle(&mut self, event: Box<WindowEvent>) {
         match event.change {

@@ -5,7 +5,6 @@ use crate::{
 };
 
 use anyhow::Result;
-use async_trait::async_trait;
 use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 pub struct Spiral {
@@ -57,7 +56,6 @@ impl Spiral {
         Ok(())
     }
 }
-#[async_trait]
 impl WindowEventHandler for Spiral {
     async fn handle(&mut self, event: Box<WindowEvent>) {
         match event.change {

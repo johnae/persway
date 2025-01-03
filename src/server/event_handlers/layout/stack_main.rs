@@ -5,7 +5,6 @@ use crate::{
 };
 
 use anyhow::Result;
-use async_trait::async_trait;
 use swayipc_async::{Connection, WindowChange, WindowEvent, Workspace};
 
 use super::super::traits::WindowEventHandler;
@@ -197,7 +196,7 @@ impl StackMain {
         self.on_close_window(event).await
     }
 }
-#[async_trait]
+
 impl WindowEventHandler for StackMain {
     async fn handle(&mut self, event: Box<WindowEvent>) {
         match event.change {
