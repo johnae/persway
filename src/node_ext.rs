@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
 use swayipc_async::{Connection, Node, NodeLayout, NodeType, Workspace};
 
 pub enum RefinedNodeType {
@@ -40,7 +39,6 @@ impl<'a> Iterator for LinearNodeIterator<'a> {
     }
 }
 
-#[async_trait]
 pub trait NodeExt {
     async fn get_workspace(&self) -> Result<Workspace>;
     fn get_refined_node_type(&self) -> RefinedNodeType;
@@ -59,7 +57,6 @@ pub trait NodeExt {
     async fn is_tabbed(&self) -> Result<bool>;
 }
 
-#[async_trait]
 impl NodeExt for Node {
     fn iter(&self) -> LinearNodeIterator {
         LinearNodeIterator::new(self)

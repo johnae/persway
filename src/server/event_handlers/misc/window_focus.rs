@@ -1,7 +1,6 @@
 use super::super::traits::WindowEventHandler;
 
 use anyhow::Result;
-use async_trait::async_trait;
 use swayipc_async::{Connection, WindowChange, WindowEvent};
 
 pub struct WindowFocus {
@@ -53,7 +52,6 @@ impl WindowFocus {
         Ok(())
     }
 }
-#[async_trait]
 impl WindowEventHandler for WindowFocus {
     async fn handle(&mut self, event: Box<WindowEvent>) {
         match event.change {
