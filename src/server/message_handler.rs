@@ -21,6 +21,7 @@ pub struct MessageHandler {
     workspace_renaming: bool,
     on_window_focus: Option<String>,
     on_window_focus_leave: Option<String>,
+    previously_focused_id: Option<i64>,
 }
 
 impl MessageHandler {
@@ -36,6 +37,7 @@ impl MessageHandler {
             workspace_renaming,
             on_window_focus,
             on_window_focus_leave,
+            previously_focused_id: None,
         }
     }
 
@@ -71,12 +73,16 @@ impl MessageHandler {
         if self.workspace_renaming {
             event_handlers::misc::workspace_renamer::WorkspaceRenamer::handle(event.clone()).await;
         }
-        event_handlers::misc::window_focus::WindowFocus::handle(
+        let previously_focused_id = event_handlers::misc::window_focus::WindowFocus::handle(
             event.clone(),
             self.on_window_focus.clone(),
             self.on_window_focus_leave.clone(),
+            self.previously_focused_id,
         )
         .await;
+        if let Some(previously_focused_id) = previously_focused_id {
+            self.previously_focused_id = Some(previously_focused_id);
+        }
         Ok(())
     }
     pub async fn handle_command(&mut self, cmd: PerswayCommand) -> Result<()> {
